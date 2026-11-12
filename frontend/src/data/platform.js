@@ -1,0 +1,22 @@
+// SAMPLE platform details for the client demo — replace with real values before launch.
+export const PLATFORM = {
+  address: "4th Floor, Sample Tech Park, OMR, Chennai, Tamil Nadu 600096",
+  cin: "U47910TN2026PTC000000",
+  codEnabled: true,
+  codFee: 0,
+  codMaxOrderValue: 10000,
+  commissionGstRate: 18,
+  defaultCommissionRate: 10,
+  defaultReturnWindowDays: 7,
+  gstin: "33AAJCK4821N1ZQ",
+  gstRateChoices: [0, 5, 18, 40],
+  legalName: "Kartiva Marketplace Private Limited",
+  lowStockThreshold: 3,
+  orderPaymentTimeoutMinutes: 15,
+  productModerationEnabled: true,
+  supportEmail: "support@kartiva.in",
+  supportPhone: "+91 44 4000 1234",
+  tcsRate: 0.5,
+  tdsRate: 0.1,
+  website: "www.kartiva.in",
+};

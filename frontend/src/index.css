@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Kartiva design tokens — see docs/UI_DESIGN_GUIDELINES.md §2. Re-brand = edit this block. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-brand-50: #ecfdf9;
+  --color-brand-100: #cff7ef;
+  --color-brand-200: #a0eee0;
+  --color-brand-300: #63dccb;
+  --color-brand-400: #2fc0b0;
+  --color-brand-500: #14a397;
+  --color-brand-600: #0e7c7b;
+  --color-brand-700: #0f6566;
+  --color-brand-800: #115153;
+  --color-brand-900: #0b3f3f;
+
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+
+  --color-ink: #0f172a;
+  --color-muted: #475569;
+  --color-line: #e2e8f0;
+  --color-canvas: #f6f8fa;
+  --color-sponsored: #64748b;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-raised: 0 8px 24px -6px rgb(15 23 42 / 0.18);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+  }
+}
+
+@layer utilities {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

@@ -1,0 +1,58 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Today: the frontend demo (static site, sample data in the browser).
+# Phase 3+: uncomment the backend service and point it at a Neon PostgreSQL database.
+services:
+  - type: web
+    name: kartiva-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: VITE_DATA_MODE
+        value: mock            # switch to "api" once the backend is live
+      - key: VITE_API_URL
+        value: /api/v1
+      - key: NODE_VERSION
+        value: "22"
+    routes:
+      # Single-page app: every path is served by index.html (React Router handles it)
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+
+  # ---- Phase 3: Django API (enable when backend/ exists) ----
+  # - type: web
+  #   name: kartiva-backend
+  #   runtime: python
+  #   rootDir: backend
+  #   region: singapore
+  #   buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
+  #   preDeployCommand: python manage.py migrate --noinput
+  #   startCommand: gunicorn config.wsgi:application --workers 2 --timeout 30 --graceful-timeout 25
+  #   healthCheckPath: /api/v1/health/
+  #   envVars:
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: config.settings.prod
+  #     - key: DATABASE_URL          # Neon connection string (pooled, sslmode=require) — set in the Render dashboard
+  #       sync: false
+  #     - key: SECRET_KEY
+  #       generateValue: true
+  #     - key: RAZORPAY_KEY_SECRET
+  #       sync: false
+  #     - key: CLOUDINARY_URL
+  #       sync: false

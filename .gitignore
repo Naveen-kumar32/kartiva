@@ -1,0 +1,35 @@
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ---- Secrets (never commit) ----
+.env
+.env.*
+!.env.example
+
+# ---- Frontend ----
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+*.log
+
+# ---- Backend ----
+backend/.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+backend/staticfiles/
+backend/media/
+backend/.pytest_cache/
+backend/htmlcov/
+.coverage
+
+# ---- Deployment artefacts ----
+*.sql.gz
+*.dump
+frontend/e2e/screenshots/
