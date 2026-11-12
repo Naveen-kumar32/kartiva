@@ -22,6 +22,8 @@ def env_bool(name, default=False):
 SECRET_KEY = env("SECRET_KEY", "dev-only-insecure-key-change-me")
 DEBUG = env_bool("DEBUG", False)
 ALLOWED_HOSTS = [h.strip() for h in env("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+if env("RENDER_EXTERNAL_HOSTNAME"):  # set automatically by Render (e.g. kartiva-backend.onrender.com)
+    ALLOWED_HOSTS.append(env("RENDER_EXTERNAL_HOSTNAME"))
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in env("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 FRONTEND_URL = env("FRONTEND_URL", "http://localhost:5173")
 APP_VERSION = env("APP_VERSION", "dev")
@@ -73,6 +75,9 @@ DATABASES = {
         conn_health_checks=True,
     ),
 }
+# Neon's pooled endpoint (PgBouncer, transaction mode) can't keep server-side cursors between queries.
+if "-pooler." in DATABASES["default"].get("HOST", ""):
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 AUTH_PASSWORD_VALIDATORS = [
