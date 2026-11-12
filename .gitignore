@@ -33,3 +33,6 @@ backend/htmlcov/
 *.sql.gz
 *.dump
 frontend/e2e/screenshots/
+
+# Throwaway browser probes written during development
+frontend/e2e/_*.mjs

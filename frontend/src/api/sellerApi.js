@@ -6,12 +6,15 @@ import { summarizeProduct } from "@/utils/catalog";
 import { mockDelay } from "@/utils/mock";
 import { DAY_MS } from "@/utils/orderMath";
 
+import { refreshCatalog } from "./bootstrap";
 import { apiError, audit, commit, getDb, nextId, nowIso } from "./mockDb";
 import { assertStoreAccess } from "./session";
 import { findSubOrder, ledgerFor, moveStock, transitionSubOrder, updateReturnInDb } from "./orderOps";
 
 const run = async (fn, ms = 350) => mockDelay(await Promise.resolve().then(fn), ms);
 const remote = async (method, url, body) => (await axiosInstance[method](url, body)).data;
+// Changes that affect the public catalogue / store cards also refresh the in-memory catalogue (api mode).
+const remoteAndRefresh = async (method, url, body) => { const data = await remote(method, url, body); await refreshCatalog(); return data; };
 const ownStore = (storeSlug) => {
   assertStoreAccess(storeSlug); // the session must own this store
   const store = getDb().stores.find((s) => s.slug === storeSlug);
@@ -70,7 +73,7 @@ const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|
 
 /** payload: { name, brand, categorySlug, description, hsnCode, gstRate, isReturnable, specifications[], variantOptions[], variants[{id?, attributes, sku, mrp, price, stock}], images[], priceTiers?[{minQty, discountPct}], moq?, enquiryOnly?, submit } */
 export async function saveSellerProduct(storeSlug, id, payload) {
-  if (!IS_MOCK) return remote(id ? "patch" : "post", id ? `${API.SELLER_PRODUCTS}${id}/` : API.SELLER_PRODUCTS, payload);
+  if (!IS_MOCK) return remoteAndRefresh(id ? "patch" : "post", id ? `${API.SELLER_PRODUCTS}${id}/` : API.SELLER_PRODUCTS, payload);
   return run(() => {
     const db = getDb();
     ownStore(storeSlug);
@@ -130,7 +133,7 @@ export async function saveSellerProduct(storeSlug, id, payload) {
 }
 
 export async function setSellerProductStatus(storeSlug, id, status) {
-  if (!IS_MOCK) return remote("post", `${API.SELLER_PRODUCTS}${id}/${status === "inactive" ? "deactivate" : "activate"}/`);
+  if (!IS_MOCK) return remoteAndRefresh("post", `${API.SELLER_PRODUCTS}${id}/${status === "inactive" ? "deactivate" : "activate"}/`);
   return run(() => {
     const product = ownProduct(storeSlug, id);
     if (status === "active" && !["inactive"].includes(product.status)) throw apiError("Only inactive products can be re-activated.");
@@ -141,7 +144,7 @@ export async function setSellerProductStatus(storeSlug, id, status) {
 }
 
 export async function deleteSellerProduct(storeSlug, id) {
-  if (!IS_MOCK) return remote("delete", `${API.SELLER_PRODUCTS}${id}/`);
+  if (!IS_MOCK) return remoteAndRefresh("delete", `${API.SELLER_PRODUCTS}${id}/`);
   return run(() => { const p = ownProduct(storeSlug, id); p.deletedAt = nowIso(); commit(); return p; });
 }
 
@@ -155,7 +158,7 @@ export async function duplicateSellerProduct(storeSlug, id) {
 
 // ---------- Inventory ----------
 export async function adjustStock(storeSlug, variantId, { delta, note, setTo }) {
-  if (!IS_MOCK) return remote("post", `/seller/variants/${variantId}/stock/`, { delta, note, set_to: setTo });
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_VARIANT_STOCK(variantId), { delta, note, setTo });
   return run(() => {
     const product = getDb().products.find((p) => p.storeSlug === storeSlug && p.variants.some((v) => v.id === variantId));
     if (!product) throw apiError("Variant not found.", 404);
@@ -169,7 +172,7 @@ export async function adjustStock(storeSlug, variantId, { delta, note, setTo }) 
 }
 
 export async function getStockMovements(storeSlug) {
-  if (!IS_MOCK) return (await remote("get", "/seller/stock-movements/")).results;
+  if (!IS_MOCK) return (await remote("get", API.SELLER_STOCK_MOVEMENTS)).results;
   return run(() => getDb().stockMovements.filter((m) => m.storeSlug === storeSlug).slice(0, 200), 200);
 }
 
@@ -180,7 +183,7 @@ export async function getSellerOrders(storeSlug) {
 }
 
 export async function updateSellerOrderStatus(storeSlug, subOrderNumber, toStatus, details) {
-  if (!IS_MOCK) return remote("post", `${API.SELLER_ORDERS}${subOrderNumber}/status/`, { to_status: toStatus, ...details });
+  if (!IS_MOCK) return remoteAndRefresh("post", `${API.SELLER_ORDERS}${subOrderNumber}/status/`, { ...details, toStatus });
   return run(() => {
     const { sub } = findSubOrder(subOrderNumber);
     if (sub.storeSlug !== storeSlug) throw apiError("Order not found.", 404);
@@ -190,12 +193,12 @@ export async function updateSellerOrderStatus(storeSlug, subOrderNumber, toStatu
 
 // ---------- Returns ----------
 export async function getSellerReturns(storeSlug) {
-  if (!IS_MOCK) return (await remote("get", "/seller/returns/")).results;
+  if (!IS_MOCK) return (await remote("get", API.SELLER_RETURNS)).results;
   return run(() => getDb().returns.filter((r) => r.storeSlug === storeSlug));
 }
 
 export async function actOnSellerReturn(storeSlug, id, action, details) {
-  if (!IS_MOCK) return remote("post", `/seller/returns/${id}/${action}/`, details);
+  if (!IS_MOCK) return remoteAndRefresh("post", `${API.SELLER_RETURNS}${id}/${action}/`, details ?? {});
   return run(() => {
     const ret = getDb().returns.find((r) => r.id === id && r.storeSlug === storeSlug);
     if (!ret) throw apiError("Return not found.", 404);
@@ -205,12 +208,12 @@ export async function actOnSellerReturn(storeSlug, id, action, details) {
 
 // ---------- Shipping methods ----------
 export async function getShippingMethods(storeSlug) {
-  if (!IS_MOCK) return (await remote("get", "/seller/shipping-methods/")).results;
+  if (!IS_MOCK) return (await remote("get", API.SELLER_SHIPPING_METHODS)).results;
   return run(() => ownStore(storeSlug).shippingMethods, 150);
 }
 
 export async function saveShippingMethod(storeSlug, method) {
-  if (!IS_MOCK) return remote(method.id ? "patch" : "post", `/seller/shipping-methods/${method.id ? `${method.id}/` : ""}`, method);
+  if (!IS_MOCK) return remoteAndRefresh(method.id ? "patch" : "post", `${API.SELLER_SHIPPING_METHODS}${method.id ? `${method.id}/` : ""}`, method);
   return run(() => {
     const store = ownStore(storeSlug);
     const all = getDb().stores.flatMap((s) => s.shippingMethods);
@@ -228,7 +231,7 @@ export async function saveShippingMethod(storeSlug, method) {
 }
 
 export async function deleteShippingMethod(storeSlug, methodId) {
-  if (!IS_MOCK) return remote("delete", `/seller/shipping-methods/${methodId}/`);
+  if (!IS_MOCK) return remoteAndRefresh("delete", `${API.SELLER_SHIPPING_METHODS}${methodId}/`);
   return run(() => {
     const store = ownStore(storeSlug);
     if (store.shippingMethods.length === 1) throw apiError("Keep at least one delivery method so buyers can order.");
@@ -240,12 +243,12 @@ export async function deleteShippingMethod(storeSlug, methodId) {
 
 // ---------- Store profile ----------
 export async function getSellerStore(storeSlug) {
-  if (!IS_MOCK) return remote("get", "/seller/store/");
+  if (!IS_MOCK) return remote("get", API.SELLER_STORE);
   return run(() => structuredClone(ownStore(storeSlug)), 150);
 }
 
 export async function updateSellerStore(storeSlug, patch) {
-  if (!IS_MOCK) return remote("patch", "/seller/store/", patch);
+  if (!IS_MOCK) return remoteAndRefresh("patch", API.SELLER_STORE, patch);
   return run(() => {
     const store = ownStore(storeSlug);
     const allowed = ["name", "tagline", "description", "color", "returnPolicy", "supportEmail", "supportPhone", "city"];
@@ -259,18 +262,18 @@ export async function updateSellerStore(storeSlug, patch) {
 
 // ---------- Earnings ----------
 export async function getSellerEarnings(storeSlug) {
-  if (!IS_MOCK) return remote("get", "/seller/earnings/");
+  if (!IS_MOCK) return remote("get", API.SELLER_EARNINGS);
   return run(() => ({ ...ledgerFor(storeSlug), settlements: getDb().settlements.filter((s) => s.storeSlug === storeSlug), store: ownStore(storeSlug) }));
 }
 
 // ---------- Ads ----------
 export async function getSellerAds(storeSlug) {
-  if (!IS_MOCK) return (await remote("get", "/seller/ads/")).results;
+  if (!IS_MOCK) return (await remote("get", API.SELLER_ADS)).results;
   return run(() => getDb().ads.filter((a) => a.storeSlug === storeSlug && a.advertiserType === "seller"));
 }
 
 export async function requestSellerAd(storeSlug, { budget, days, productId, slot }) {
-  if (!IS_MOCK) return remote("post", "/seller/ads/", { budget, days, product_id: productId, slot });
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_ADS, { budget, days, productId, slot });
   return run(() => {
     const db = getDb();
     const store = ownStore(storeSlug);
@@ -292,7 +295,7 @@ export async function requestSellerAd(storeSlug, { budget, days, productId, slot
 
 // ---------- Reviews ----------
 export async function getSellerReviews(storeSlug) {
-  if (!IS_MOCK) return (await remote("get", "/seller/reviews/")).results;
+  if (!IS_MOCK) return (await remote("get", API.SELLER_REVIEWS)).results;
   return run(() => {
     const hidden = getDb().hiddenReviews;
     return getDb().products.filter((p) => p.storeSlug === storeSlug && !p.deletedAt).slice(0, 12)

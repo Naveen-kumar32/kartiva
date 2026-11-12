@@ -1,6 +1,7 @@
 import { API, axiosInstance, IS_MOCK } from "@/config";
 import { mockDelay } from "@/utils/mock";
 
+import { refreshCatalog } from "./bootstrap";
 import { apiError, commit, getDb } from "./mockDb";
 import { findSubOrder, placeOrderInDb, requestReturnInDb, transitionSubOrder, updateReturnInDb } from "./orderOps";
 import { requireSession, sessionUser } from "./session";
@@ -17,7 +18,11 @@ const ownOrder = (order) => {
 // The buyer identity comes from the session (never from the payload). Prices are recomputed on the server.
 // idempotencyKey: retries / double-clicks of the same checkout return the SAME order instead of a duplicate.
 export async function placeOrder(payload) {
-  if (!IS_MOCK) return (await axiosInstance.post(API.CHECKOUT, payload, { headers: { "Idempotency-Key": payload.idempotencyKey ?? crypto.randomUUID() } })).data;
+  if (!IS_MOCK) {
+    const { data } = await axiosInstance.post(API.CHECKOUT, payload, { headers: { "Idempotency-Key": payload.idempotencyKey ?? crypto.randomUUID() } });
+    await refreshCatalog(); // stock changed
+    return data;
+  }
   return run(() => {
     const user = requireSession("buyer");
     const db = getDb();
@@ -39,12 +44,16 @@ export async function getMyOrders() {
 }
 
 export async function getOrder(orderNumber) {
-  if (!IS_MOCK) return (await axiosInstance.get(`${API.ORDERS}${orderNumber}/`)).data;
+  if (!IS_MOCK) return (await axiosInstance.get(API.ORDER(orderNumber))).data;
   return run(() => ownOrder(getDb().orders.find((o) => o.number === orderNumber)), 200);
 }
 
 export async function cancelMySubOrder(subOrderNumber, reason) {
-  if (!IS_MOCK) return (await axiosInstance.post(`${API.ORDERS}sub-orders/${subOrderNumber}/cancel/`, { reason })).data;
+  if (!IS_MOCK) {
+    const { data } = await axiosInstance.post(API.SUB_ORDER_CANCEL(subOrderNumber), { reason });
+    await refreshCatalog(); // stock released
+    return data;
+  }
   return run(() => {
     requireSession("buyer");
     ownOrder(findSubOrder(subOrderNumber).order);
@@ -53,13 +62,13 @@ export async function cancelMySubOrder(subOrderNumber, reason) {
 }
 
 export async function getMyReturns() {
-  if (!IS_MOCK) return (await axiosInstance.get("/returns/")).data.results;
+  if (!IS_MOCK) return (await axiosInstance.get(API.RETURNS)).data.results;
   const user = requireSession();
   return mockDelay(getDb().returns.filter((r) => r.buyer.email === user.email), 200);
 }
 
 export async function requestReturn(payload) {
-  if (!IS_MOCK) return (await axiosInstance.post("/returns/", payload)).data;
+  if (!IS_MOCK) return (await axiosInstance.post(API.RETURNS, payload)).data;
   return run(() => {
     requireSession("buyer");
     ownOrder(findSubOrder(payload.subOrderNumber).order);
@@ -68,7 +77,7 @@ export async function requestReturn(payload) {
 }
 
 export async function escalateReturn(id) {
-  if (!IS_MOCK) return (await axiosInstance.post(`/returns/${id}/escalate/`)).data;
+  if (!IS_MOCK) return (await axiosInstance.post(API.RETURN_ESCALATE(id))).data;
   return run(() => {
     const user = requireSession("buyer");
     const ret = getDb().returns.find((r) => r.id === id);
@@ -77,14 +86,14 @@ export async function escalateReturn(id) {
   });
 }
 
-// UX hint only — the backend re-checks COD eligibility at checkout.
+// UX hint only — the backend re-checks COD eligibility (blocked buyer, limit, method) at checkout.
 export function isCodBlocked(email) {
   if (!IS_MOCK) return false;
   return getDb().buyers.some((b) => b.email === email && b.codBlocked);
 }
 
 export async function getOrderRefunds(orderNumber) {
-  if (!IS_MOCK) return (await axiosInstance.get(`${API.ORDERS}${orderNumber}/refunds/`)).data.results;
+  if (!IS_MOCK) return (await axiosInstance.get(API.ORDER_REFUNDS(orderNumber))).data.results;
   return run(() => {
     const user = requireSession();
     const order = getDb().orders.find((o) => o.number === orderNumber);

@@ -77,7 +77,7 @@ export async function getHome() {
 
 /** params: { q, category, store, brand[], sellers[], businessTypes[], minPrice, maxPrice, minRating, inStock, verified, bulk, premium, attrs{}, sort, page } */
 export async function getProducts(params = {}) {
-  if (!IS_MOCK) return (await axiosInstance.get(API.PRODUCTS, { params })).data;
+  if (!IS_MOCK) return (await axiosInstance.get(API.PRODUCTS, { params: toQuery(params) })).data;
   const { attrs = {}, brands = [], bulk, businessTypes = [], category, inStock, maxPrice, minPrice, minRating, page = 1, premium, q = "", sellers = [], sort = "relevance", store, verified } = params;
   let list = publicProducts().map(withSummary);
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -153,6 +153,19 @@ export async function getStoreWithProducts(slug) {
   const reviews = [...products].sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 4)
     .flatMap((p) => buildReviews(p, 2).filter((rv) => !hidden.includes(rv.id)).map((rv) => ({ ...rv, productName: p.name, productSlug: p.slug })));
   return mockDelay({ products, reviews, store, verifiedDocuments });
+}
+
+// API mode: same query names as the listing page URL (brand=a,b · attr.Colour=Red,Blue · in_stock=1 …).
+function toQuery({ attrs = {}, brands = [], bulk, businessTypes = [], category, inStock, maxPrice, minPrice, minRating, page, premium, q, sellers = [], sort, store, verified } = {}) {
+  const list = (v) => (v?.length ? v.join(",") : undefined);
+  const flag = (v) => (v ? 1 : undefined);
+  const query = {
+    brand: list(brands), btype: list(businessTypes), bulk: flag(bulk), category: category || undefined, in_stock: flag(inStock), max_price: maxPrice || undefined,
+    min_price: minPrice || undefined, min_rating: minRating || undefined, page: page > 1 ? page : undefined, premium: flag(premium), q: q || undefined,
+    seller: list(sellers), sort: sort || undefined, store: store || undefined, verified: flag(verified),
+  };
+  Object.entries(attrs).forEach(([name, values]) => { if (values?.length) query[`attr.${name}`] = values.join(","); });
+  return query;
 }
 
 function countBy(list, keyFn) {

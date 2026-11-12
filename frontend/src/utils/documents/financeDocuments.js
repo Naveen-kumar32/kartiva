@@ -9,15 +9,15 @@ const LABELS = {
 
 export function downloadSettlementStatement({ entries, platform, settlement, store }) {
   const { doc, W, y } = newDoc({ subtitle: settlement.number, title: "SETTLEMENT STATEMENT" });
-  block(doc, 36, y, "Seller", [store.name, `GSTIN: ${store.gstin}`, `${store.city}, ${store.state}`]);
+  block(doc, 40, y, "Seller", [store.name, `GSTIN: ${store.gstin}`, `${store.city}, ${store.state}`]);
   block(doc, 300, y, "Settlement", [`No: ${settlement.number}`, `Period ending: ${pdfDate(settlement.periodEnd)}`, `Status: ${settlement.status.replace(/_/g, " ")}`, settlement.utr && `UTR: ${settlement.utr}`, settlement.paidAt && `Paid on: ${pdfDate(settlement.paidAt)}`]);
   const summary = Object.entries(settlement.breakdown ?? entries.reduce((acc, e) => ({ ...acc, [e.type]: (acc[e.type] ?? 0) + e.amount }), {}));
   let end = table(doc, y + 96, ["Summary", "Amount"], summary.map(([k, v]) => [LABELS[k] ?? k, rs(v)]), { columnStyles: { 1: { halign: "right" } } });
   end = totals(doc, end, [...(settlement.carriedIn ? [["Carried forward in", rs(settlement.carriedIn)]] : []), ["Net payable", rs(settlement.net), true]], W);
   doc.setFontSize(9);
-  doc.text(amountInWords(Math.abs(settlement.net)), 36, end + 4, { maxWidth: W - 72 });
+  doc.text(amountInWords(Math.abs(settlement.net)), 40, end + 4, { maxWidth: W - 80 });
   if (entries.length) table(doc, end + 22, ["Date", "Type", "Description", "Amount"], entries.map((e) => [pdfDate(e.date), LABELS[e.type] ?? e.type, e.description, rs(e.amount)]), { columnStyles: { 3: { halign: "right" } } });
-  footer(doc, `${platform.legalName} · GSTIN ${platform.gstin} · Statement generated ${pdfDate(new Date().toISOString())}. Questions: ${platform.supportEmail}`);
+  footer(doc, `Settlement statement generated ${pdfDate(new Date().toISOString())}. Questions about this payout: ${platform.supportEmail}.`);
   save(doc, `Settlement_${settlement.number}_${store.slug}.pdf`);
 }
 
@@ -26,15 +26,15 @@ export function downloadCommissionInvoice({ platform, settlement, store }) {
   const interstate = store.gstStateCode !== platform.gstin.slice(0, 2);
   const gst = (commission * platform.commissionGstRate) / 100;
   const { doc, W, y } = newDoc({ subtitle: `KTV/COM/26-27/${String(settlement.id).padStart(5, "0")}`, title: "TAX INVOICE — COMMISSION" });
-  block(doc, 36, y, "Supplier (service provider)", [platform.legalName, platform.address, `GSTIN: ${platform.gstin}`]);
+  block(doc, 40, y, "Supplier (service provider)", [platform.legalName, platform.address, `GSTIN: ${platform.gstin}`]);
   block(doc, 300, y, "Recipient", [store.name, `GSTIN: ${store.gstin}`, `${store.city}, ${store.state}`]);
   const end = table(doc, y + 100, ["Description", "SAC", "Taxable", interstate ? "IGST" : "CGST + SGST", "Total"], [[
     `Marketplace commission for settlement ${settlement.number}`, "998599", rs(commission), `${rs(gst)} @${platform.commissionGstRate}%`, rs(commission + gst),
   ]]);
   totals(doc, end, [["Taxable value", rs(commission)], [interstate ? "IGST" : "CGST + SGST", rs(gst)], ["Total", rs(commission + gst), true]], W);
   doc.setFontSize(9);
-  doc.text(amountInWords(commission + gst), 36, end + 70, { maxWidth: W - 72 });
-  footer(doc, "Commission and GST on commission are deducted from the seller payout. Computer generated invoice.");
+  doc.text(amountInWords(commission + gst), 40, end + 70, { maxWidth: W - 80 });
+  footer(doc, "Commission and GST on commission are deducted from the seller payout. Tax payable on reverse charge: No.");
   save(doc, `CommissionInvoice_${settlement.number}.pdf`);
 }
 

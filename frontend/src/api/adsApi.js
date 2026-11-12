@@ -24,7 +24,10 @@ function matchesContext(product, { categorySlug, excludeProductId, query } = {})
 // Returns live ads for one slot, highest priority first, with product data resolved.
 // context = { categorySlug?, query?, excludeProductId? } — see matchesContext.
 export async function getSlotAds(slotKey, context = {}) {
-  if (!IS_MOCK) return (await axiosInstance.get(API.ADS, { params: { slots: slotKey, category: context.categorySlug, q: context.query } })).data[slotKey];
+  if (!IS_MOCK) {
+    const params = { category: context.categorySlug || undefined, exclude: context.excludeProductId ?? undefined, q: context.query || undefined, slot: slotKey };
+    return (await axiosInstance.get(API.ADS, { params })).data;
+  }
   const slot = AD_SLOTS.find((s) => s.key === slotKey);
   if (slot?.isActive === false) return mockDelay({ items: [], slot }, 50);
   const items = ADS.filter((a) => a.slot === slotKey && a.status === "active" && a.startsAt <= today() && a.endsAt >= today())

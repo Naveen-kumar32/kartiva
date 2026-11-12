@@ -281,6 +281,7 @@ Emails are sent synchronously through `integrations/email` with a short timeout,
 | AD-23 | **AWS-portable by rule** (14 portability rules, [AWS_MIGRATION.md](AWS_MIGRATION.md)) checked in every PR | Re-architect at migration time | Migration becomes config + data copy, not a rewrite |
 | AD-24 | `backend/Dockerfile` kept from Phase 3 and built in CI, while the VPS runs native systemd (AD-13) | Docker in production now | Same runbook simplicity today. The image is ready for ECS/App Runner later |
 | AD-25 | Trunk-based Git on a client-owned GitHub org, CI with GitHub Actions, tagged releases ([ENGINEERING_WORKFLOW.md](ENGINEERING_WORKFLOW.md)) | GitFlow | Small team, frequent small releases, easy handover |
+| AD-27 | **Document-style rows on PostgreSQL** for the MVP: each table stores the full record as JSONB in the frontend's shape plus indexed columns for lookups (`apps/core/docmodel.py`) | Fully normalised tables for every entity from day one | The demo's business logic ports to Python almost line by line, so the whole app runs on a real backend in days. Money/stock changes use row locks inside transactions. Hot tables (orders, ledger) can be normalised later without changing the API |
 | AD-26 | Off-site backups to an S3 bucket in ap-south-1 from launch | Provider snapshots only | Survives VPS loss and is already in place for AWS migration |
 
 ## 6. Project folder structure

@@ -13,7 +13,8 @@
     "e2e": "node e2e/smoke.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:size": "node scripts/check-bundle-size.mjs"
+    "check:size": "node scripts/check-bundle-size.mjs",
+    "dev:api": "VITE_DATA_MODE=api VITE_API_URL=/api/v1 vite"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.14.0",

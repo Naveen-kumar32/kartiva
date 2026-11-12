@@ -1,6 +1,6 @@
 // Email documents. In mock mode mail is recorded in an Outbox (no real sending);
 // in api mode the backend sends via SMTP with the PDF attached (Phase 3+).
-import { IS_MOCK, axiosInstance } from "@/config";
+import { API, IS_MOCK, axiosInstance } from "@/config";
 import { mockDelay } from "@/utils/mock";
 
 import { apiError, audit, commit, getDb, nextId, nowIso } from "./mockDb";
@@ -19,7 +19,7 @@ export async function sendEmail({ attachment, cc, message, sentBy = "Kartiva", s
     form.append("subject", subject);
     form.append("message", message ?? "");
     if (attachment) form.append("attachment", attachment.blob, attachment.filename);
-    return (await axiosInstance.post("/emails/", form, { headers: { "Content-Type": "multipart/form-data" } })).data;
+    return (await axiosInstance.post(API.EMAILS, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
   }
   const db = getDb();
   const mail = {
@@ -33,18 +33,18 @@ export async function sendEmail({ attachment, cc, message, sentBy = "Kartiva", s
 }
 
 export async function getOutbox() {
-  if (!IS_MOCK) return (await axiosInstance.get("/emails/")).data.results;
+  if (!IS_MOCK) return (await axiosInstance.get(API.EMAILS)).data.results;
   return mockDelay(getDb().outbox, 150);
 }
 
 export async function getSmsOutbox() {
-  if (!IS_MOCK) return (await axiosInstance.get("/sms/")).data.results;
+  if (!IS_MOCK) return (await axiosInstance.get(API.SMS)).data.results;
   return mockDelay(getDb().smsOutbox ?? [], 120);
 }
 
 // Data needed to (re)generate an emailed PDF from its recipe { kind, orderNumber, subOrderNumber }.
 export async function getAttachmentSource(attachment) {
-  if (!IS_MOCK) return (await axiosInstance.get(`/emails/attachments/`, { params: attachment })).data;
+  if (!IS_MOCK) return (await axiosInstance.get(API.EMAIL_ATTACHMENTS, { params: { kind: attachment.kind, orderNumber: attachment.orderNumber, subOrderNumber: attachment.subOrderNumber } })).data;
   const db = getDb();
   const order = db.orders.find((o) => o.number === attachment.orderNumber);
   if (!order) throw apiError("The order for this attachment no longer exists.", 404);

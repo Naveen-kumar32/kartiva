@@ -1,18 +1,22 @@
 // Admin growth API — leads & RFQs, KYC verification, membership plans, support desk, CMS, broadcasts,
 // staff RBAC, risk flags, analytics, money ledger and tax centre. Every write is audit-logged with the
 // signed-in admin's name (actor) and committed. In api mode each call maps to a Django admin endpoint.
-import { IS_MOCK, axiosInstance } from "@/config";
+import { API, IS_MOCK, axiosInstance } from "@/config";
 import { GSTIN_PATTERN, INDIAN_STATES } from "@/constants";
 import { ROUTES } from "@/locales";
 import { mockDelay } from "@/utils/mock";
 import { DAY_MS } from "@/utils/orderMath";
 
+import { refreshCatalog } from "./bootstrap";
 import { sendEmail } from "./mailApi";
 import { dispatchRfq, notify, recomputeKyc, refreshBadges } from "./marketOps";
 import { apiError, audit, commit, getDb, nextId, nowIso } from "./mockDb";
 
 const run = async (fn, ms = 300) => mockDelay(await Promise.resolve().then(fn), ms);
 const remote = async (method, url, body) => (await axiosInstance[method](url, body)).data;
+const get = async (url, params) => (await axiosInstance.get(url, params ? { params } : undefined)).data;
+// API mode: store badges/plans, the announcement bar and homepage sections live in the storefront's in-memory catalogue — reload it.
+const withCatalog = async (promise) => { const result = await promise; await refreshCatalog(); return result; };
 const HOUR = 3_600_000;
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 const ms = (iso) => new Date(iso).getTime();
@@ -44,7 +48,7 @@ function firstSellerReplyHours(enquiry) {
 }
 
 export async function getAdminLeads() {
-  if (!IS_MOCK) return remote("get", "/admin-api/leads/");
+  if (!IS_MOCK) return get(API.ADMIN_LEADS);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -78,7 +82,7 @@ export async function getAdminLeads() {
 }
 
 export async function getAdminThread(threadId) {
-  if (!IS_MOCK) return remote("get", `/admin-api/threads/${threadId}/`);
+  if (!IS_MOCK) return get(API.ADMIN_THREAD(threadId));
   return run(() => {
     const thread = getDb().threads.find((t) => t.id === Number(threadId));
     if (!thread) throw apiError("Conversation not found.", 404);
@@ -87,7 +91,7 @@ export async function getAdminThread(threadId) {
 }
 
 export async function adminSetEnquirySpam(id, spam, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/enquiries/${id}/${spam ? "spam" : "restore"}/`);
+  if (!IS_MOCK) return remote("post", API.ADMIN_ENQUIRY_ACTION(id, spam ? "spam" : "restore"));
   return run(() => {
     const e = getDb().enquiries.find((x) => x.id === id);
     if (!e) throw apiError("Enquiry not found.", 404);
@@ -101,7 +105,7 @@ export async function adminSetEnquirySpam(id, spam, actor) {
 }
 
 export async function adminReassignEnquiry(id, storeSlug, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/enquiries/${id}/reassign/`, { store: storeSlug });
+  if (!IS_MOCK) return remote("post", API.ADMIN_ENQUIRY_ACTION(id, "reassign"), { storeSlug });
   return run(() => {
     const db = getDb();
     const e = db.enquiries.find((x) => x.id === id);
@@ -125,7 +129,7 @@ export async function adminReassignEnquiry(id, storeSlug, actor) {
 }
 
 export async function adminUpdateRfq(id, patch, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/rfqs/${id}/`, patch);
+  if (!IS_MOCK) return remote("patch", API.ADMIN_RFQ(id), patch);
   return run(() => {
     const rfq = getDb().rfqs.find((r) => r.id === id);
     if (!rfq) throw apiError("Buy request not found.", 404);
@@ -146,7 +150,7 @@ export async function adminUpdateRfq(id, patch, actor) {
 }
 
 export async function adminNotifyRfqSellers(id, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/rfqs/${id}/notify-sellers/`);
+  if (!IS_MOCK) return remote("post", API.ADMIN_RFQ_NOTIFY_SELLERS(id));
   return run(() => {
     const db = getDb();
     const rfq = db.rfqs.find((r) => r.id === id);
@@ -167,7 +171,7 @@ export async function adminNotifyRfqSellers(id, actor) {
 // Every request with FULL buyer details (admin only), suggested sellers, and per-seller delivery status
 // (sent → viewed → quoted). stores = approved stores the admin can forward to.
 export async function getProductRequests() {
-  if (!IS_MOCK) return remote("get", "/admin-api/product-requests/");
+  if (!IS_MOCK) return get(API.ADMIN_PRODUCT_REQUESTS);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -199,7 +203,7 @@ export async function getProductRequests() {
 
 // Admin forwards a request to chosen sellers (any category) with an optional note; sellers get full details.
 export async function adminForwardRfq(id, storeSlugs, note, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/product-requests/${id}/forward/`, { note, stores: storeSlugs });
+  if (!IS_MOCK) return remote("post", API.ADMIN_PRODUCT_REQUEST_FORWARD(id), { note, storeSlugs });
   return run(() => {
     const db = getDb();
     const rfq = db.rfqs.find((r) => r.id === id);
@@ -216,7 +220,7 @@ export async function adminForwardRfq(id, storeSlugs, note, actor) {
 
 // ---------- KYC verification ----------
 export async function getKycQueue() {
-  if (!IS_MOCK) return remote("get", "/admin-api/kyc/");
+  if (!IS_MOCK) return get(API.ADMIN_KYC);
   return run(() => {
     const db = getDb();
     return db.stores.filter((s) => s.status !== "rejected").map((store) => {
@@ -227,7 +231,7 @@ export async function getKycQueue() {
 }
 
 export async function reviewKycDocument(docId, decision, note, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/kyc/${docId}/${decision}/`, { note });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_KYC_REVIEW(docId, decision), { note }));
   return run(() => {
     const doc = getDb().kycDocuments.find((d) => d.id === docId);
     if (!doc) throw apiError("Document not found.", 404);
@@ -245,7 +249,7 @@ export async function reviewKycDocument(docId, decision, note, actor) {
 }
 
 export async function setTrustedBadge(slug, on, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/stores/${slug}/trusted/`, { trusted: on });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_STORE_ACTION(slug, "trusted"), { trusted: on }));
   return run(() => {
     const store = mustStore(slug);
     store.trustedManual = on;
@@ -260,7 +264,7 @@ export async function setTrustedBadge(slug, on, actor) {
 
 // Simulated GST portal lookup: format + state code must match the store's registered state.
 export async function verifyStoreGstin(slug, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/stores/${slug}/verify-gstin/`);
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_STORE_ACTION(slug, "verify-gstin")));
   return run(() => {
     const store = mustStore(slug);
     const gstin = String(store.gstin ?? "").toUpperCase();
@@ -286,7 +290,7 @@ export async function verifyStoreGstin(slug, actor) {
 
 // ---------- Membership plans ----------
 export async function getPlansOverview() {
-  if (!IS_MOCK) return remote("get", "/admin-api/plans/");
+  if (!IS_MOCK) return get(API.ADMIN_PLANS);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -319,7 +323,7 @@ export async function getPlansOverview() {
 }
 
 export async function savePlan(plan, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/plans/${plan.id}/`, plan);
+  if (!IS_MOCK) return remote("patch", API.ADMIN_PLAN(plan.id), plan);
   return run(() => {
     const existing = getDb().plans.find((p) => p.id === plan.id);
     if (!existing) throw apiError("Plan not found.", 404);
@@ -340,7 +344,7 @@ export async function savePlan(plan, actor) {
 }
 
 export async function grantPlan({ months, planCode, storeSlug }, actor) {
-  if (!IS_MOCK) return remote("post", "/admin-api/subscriptions/grant/", { months, plan: planCode, store: storeSlug });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_SUBSCRIPTION_GRANT, { months, planCode, storeSlug }));
   return run(() => {
     const db = getDb();
     const store = mustStore(storeSlug);
@@ -370,7 +374,7 @@ export async function grantPlan({ months, planCode, storeSlug }, actor) {
 }
 
 export async function cancelSubscription(id, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/subscriptions/${id}/cancel/`);
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_SUBSCRIPTION_CANCEL(id)));
   return run(() => {
     const db = getDb();
     const sub = db.subscriptions.find((s) => s.id === id);
@@ -395,7 +399,7 @@ export async function cancelSubscription(id, actor) {
 const firstResponseAt = (t) => t.messages.find((m) => m.from === "admin")?.at ?? null;
 
 export async function getAdminTickets() {
-  if (!IS_MOCK) return remote("get", "/admin-api/tickets/");
+  if (!IS_MOCK) return get(API.ADMIN_TICKETS);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -429,7 +433,7 @@ function notifyRequester(ticket, title, body) {
 }
 
 export async function adminReplyTicket(id, body, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/tickets/${id}/reply/`, { body });
+  if (!IS_MOCK) return remote("post", API.ADMIN_TICKET_REPLY(id), { body });
   return run(() => {
     const t = mustTicket(id);
     const text = String(body ?? "").trim();
@@ -447,7 +451,7 @@ export async function adminReplyTicket(id, body, actor) {
 }
 
 export async function adminUpdateTicket(id, patch, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/tickets/${id}/`, patch);
+  if (!IS_MOCK) return remote("patch", API.ADMIN_TICKET(id), patch);
   return run(() => {
     const t = mustTicket(id);
     const changes = [];
@@ -476,7 +480,7 @@ export async function adminUpdateTicket(id, patch, actor) {
 }
 
 export async function addTicketNote(id, text, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/tickets/${id}/notes/`, { text });
+  if (!IS_MOCK) return remote("post", API.ADMIN_TICKET_NOTES(id), { text });
   return run(() => {
     const t = mustTicket(id);
     if (!String(text ?? "").trim()) throw apiError("Write a note first.");
@@ -492,7 +496,7 @@ export const DEFAULT_HOME_SECTIONS = { buyRequestBanner: true, featuredStores: t
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function getAdminContent() {
-  if (!IS_MOCK) return remote("get", "/admin-api/content/");
+  if (!IS_MOCK) return get(API.ADMIN_CONTENT);
   return run(() => {
     const db = getDb();
     return { announcement: db.announcement, homeSections: { ...DEFAULT_HOME_SECTIONS, ...(db.platform.homeSections ?? {}) }, pages: db.cmsPages };
@@ -500,7 +504,7 @@ export async function getAdminContent() {
 }
 
 export async function saveCmsPage(page, actor) {
-  if (!IS_MOCK) return remote(page.id ? "patch" : "post", `/admin-api/pages/${page.id ? `${page.id}/` : ""}`, page);
+  if (!IS_MOCK) return page.id ? remote("patch", API.ADMIN_PAGE(page.id), page) : remote("post", API.ADMIN_PAGES, page);
   return run(() => {
     const db = getDb();
     const title = String(page.title ?? "").trim();
@@ -524,7 +528,7 @@ export async function saveCmsPage(page, actor) {
 }
 
 export async function setCmsPublished(id, published, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/pages/${id}/`, { published });
+  if (!IS_MOCK) return remote("post", API.ADMIN_PAGE_PUBLISH(id), { published });
   return run(() => {
     const page = getDb().cmsPages.find((p) => p.id === id);
     if (!page) throw apiError("Page not found.", 404);
@@ -537,7 +541,7 @@ export async function setCmsPublished(id, published, actor) {
 }
 
 export async function saveAnnouncement(value, actor) {
-  if (!IS_MOCK) return remote("put", "/admin-api/announcement/", value);
+  if (!IS_MOCK) return withCatalog(remote("put", API.ADMIN_ANNOUNCEMENT, value));
   return run(() => {
     const db = getDb();
     const text = String(value.text ?? "").trim();
@@ -552,7 +556,7 @@ export async function saveAnnouncement(value, actor) {
 }
 
 export async function saveHomeSections(sections, actor) {
-  if (!IS_MOCK) return remote("put", "/admin-api/home-sections/", sections);
+  if (!IS_MOCK) return withCatalog(remote("put", API.ADMIN_HOME_SECTIONS, sections));
   return run(() => {
     const p = getDb().platform;
     p.homeSections = { ...DEFAULT_HOME_SECTIONS, ...(p.homeSections ?? {}), ...Object.fromEntries(Object.keys(DEFAULT_HOME_SECTIONS).map((k) => [k, sections[k] !== false])) };
@@ -582,7 +586,7 @@ function audienceSize(db, { audience, planCode, storeSlug }) {
 }
 
 export async function getBroadcastData() {
-  if (!IS_MOCK) return remote("get", "/admin-api/broadcasts/");
+  if (!IS_MOCK) return get(API.ADMIN_BROADCASTS);
   return run(() => {
     const db = getDb();
     const sellers = db.stores.filter((s) => s.status === "approved");
@@ -600,7 +604,7 @@ export async function getBroadcastData() {
 }
 
 export async function sendBroadcast(values, actor) {
-  if (!IS_MOCK) return remote("post", "/admin-api/broadcasts/", values);
+  if (!IS_MOCK) return remote("post", API.ADMIN_BROADCASTS, values);
   const { audience, body, channels = [], planCode, storeSlug, title } = values;
   const db = getDb();
   if (!String(title ?? "").trim() || !String(body ?? "").trim()) throw apiError("Add a title and a message.");
@@ -635,12 +639,12 @@ export async function sendBroadcast(values, actor) {
 export const ADMIN_ROLES = ["super_admin", "operations", "finance", "catalogue", "support"];
 
 export async function getAdminStaff() {
-  if (!IS_MOCK) return remote("get", "/admin-api/staff/");
+  if (!IS_MOCK) return get(API.ADMIN_STAFF);
   return run(() => getDb().adminStaff, 150);
 }
 
 export async function inviteAdminStaff({ email, name, role }, actor) {
-  if (!IS_MOCK) return remote("post", "/admin-api/staff/", { email, name, role });
+  if (!IS_MOCK) return remote("post", API.ADMIN_STAFF, { email, name, role });
   return run(() => {
     const db = getDb();
     const clean = String(email).trim().toLowerCase();
@@ -655,7 +659,7 @@ export async function inviteAdminStaff({ email, name, role }, actor) {
 }
 
 export async function updateAdminStaff(id, patch, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/staff/${id}/`, patch);
+  if (!IS_MOCK) return remote("patch", API.ADMIN_STAFF_MEMBER(id), patch);
   return run(() => {
     const db = getDb();
     const member = db.adminStaff.find((s) => s.id === id);
@@ -680,7 +684,7 @@ export async function updateAdminStaff(id, patch, actor) {
 }
 
 export async function removeAdminStaff(id, actorEmail, actor) {
-  if (!IS_MOCK) return remote("delete", `/admin-api/staff/${id}/`);
+  if (!IS_MOCK) return remote("delete", API.ADMIN_STAFF_MEMBER(id));
   return run(() => {
     const db = getDb();
     const member = db.adminStaff.find((s) => s.id === id);
@@ -700,7 +704,7 @@ const dismissedList = (db) => (db.platform.dismissedRiskFlags ??= []);
 const last10 = (p) => String(p ?? "").replace(/\D/g, "").slice(-10);
 
 export async function getRiskFlags() {
-  if (!IS_MOCK) return remote("get", "/admin-api/risk/");
+  if (!IS_MOCK) return get(API.ADMIN_RISK);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -772,7 +776,7 @@ export async function getRiskFlags() {
 }
 
 export async function dismissRiskFlag(key, actor) {
-  if (!IS_MOCK) return remote("post", "/admin-api/risk/dismiss/", { key });
+  if (!IS_MOCK) return remote("post", API.ADMIN_RISK_DISMISS, { key });
   return run(() => {
     const list = dismissedList(getDb());
     if (!list.includes(key)) list.push(key);
@@ -783,7 +787,7 @@ export async function dismissRiskFlag(key, actor) {
 }
 
 export async function restoreRiskFlags(actor) {
-  if (!IS_MOCK) return remote("post", "/admin-api/risk/restore/");
+  if (!IS_MOCK) return remote("post", API.ADMIN_RISK_RESTORE);
   return run(() => {
     const list = dismissedList(getDb());
     const n = list.length;
@@ -807,7 +811,7 @@ function prng(seed) {
 const share = (items, total) => items.map((x) => ({ ...x, share: total ? Math.round((x.value / total) * 100) : 0 }));
 
 export async function getAdminAnalytics(days = 30) {
-  if (!IS_MOCK) return remote("get", "/admin-api/analytics/", { params: { days } });
+  if (!IS_MOCK) return get(API.ADMIN_ANALYTICS, { days });
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -892,7 +896,7 @@ export async function getAdminAnalytics(days = 30) {
 
 // ---------- Transactions (unified money ledger) ----------
 export async function getTransactions() {
-  if (!IS_MOCK) return remote("get", "/admin-api/transactions/");
+  if (!IS_MOCK) return get(API.ADMIN_TRANSACTIONS);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -944,7 +948,7 @@ export async function getTransactions() {
 const monthOf = (iso) => iso.slice(0, 7);
 
 export async function getTaxCentre(month) {
-  if (!IS_MOCK) return remote("get", "/admin-api/tax/", { params: { month } });
+  if (!IS_MOCK) return get(API.ADMIN_TAX, month ? { month } : undefined);
   return run(() => {
     const db = getDb();
     const p = db.platform;
@@ -1004,7 +1008,7 @@ export async function getTaxCentre(month) {
 
 // ---------- Dashboard summary for the growth modules ----------
 export async function getGrowthSummary() {
-  if (!IS_MOCK) return remote("get", "/admin-api/growth-summary/");
+  if (!IS_MOCK) return get(API.ADMIN_GROWTH_SUMMARY);
   return run(() => {
     const db = getDb();
     const now = Date.now();

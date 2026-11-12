@@ -68,7 +68,14 @@ Demo scope built on mock data (`VITE_DATA_MODE=mock`). Verified: `npm run build`
 - ✅ Downloads & customer messaging (2026-11-12): every table/report downloads as PDF (letterhead) / Excel (.xlsx) / CSV via one Download menu; GST invoices on the seller's letterhead as PDF or Excel, invoice registers for admin and sellers; customers get email (order copy, receipt, invoice attached) + SMS/WhatsApp for every order step per their preferences (Profile → Order updates); Admin → Letters & mail shows the email outbox (attachments downloadable) and an SMS & WhatsApp tab; buttons never wrap text
 - ⬜ Remaining Phase 2 items: empty-state illustrations
 
-## Phase 3: Backend Foundation ⬜
+## Phase 3: Backend Foundation 🟡 (started 2026-11-12)
+
+- ✅ Django 6 + DRF + SimpleJWT project in `backend/` (split settings, env config, request-id JSON logging, uniform `{detail}` errors), local PostgreSQL 18
+- ✅ All tables (DocModel pattern, AD-27) + migrations; `seed_demo` loads the exact demo dataset
+- ✅ Auth: login with lockout, httpOnly refresh cookie, logout (blacklist), buyer + seller sign-up, password reset; `/health/`, `/bootstrap/`
+- ✅ Frontend api mode: Vite proxy, bootstrap hydration, `npm run dev:api`
+- 🟡 Porting every API module to the backend (catalogue, orders, marketplace, Seller Hub, Admin)
+
 
 - ⬜ Django project in `backend/`, split settings, env
 - ⬜ PostgreSQL connection, `pg_trgm`

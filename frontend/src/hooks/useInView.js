@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // true once the element has been ≥ threshold visible (used for ad impressions).
+// Callback ref, so it also works when the element mounts later (e.g. after a loading skeleton).
 export function useInView({ once = true, threshold = 0.5 } = {}) {
-  const ref = useRef(null);
+  const [node, setNode] = useState(null);
   const [inView, setInView] = useState(false);
+  const ref = useCallback((el) => setNode(el), []);
   useEffect(() => {
-    const node = ref.current;
     if (!node || typeof IntersectionObserver === "undefined") return undefined;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
@@ -15,6 +16,6 @@ export function useInView({ once = true, threshold = 0.5 } = {}) {
     }, { threshold });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [once, threshold]);
+  }, [node, once, threshold]);
   return [ref, inView];
 }

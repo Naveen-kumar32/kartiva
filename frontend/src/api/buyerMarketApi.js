@@ -175,7 +175,7 @@ export async function postRfq(user, payload) {
 
 // Public social proof: latest open buy requests (buyer first name + city only — no contact details).
 export async function getRecentRfqs(limit = 6) {
-  if (!IS_MOCK) return remote("get", "/rfqs/recent/");
+  if (!IS_MOCK) return (await axiosInstance.get("/rfqs/recent/", { params: { limit } })).data;
   return run(() => getDb().rfqs
     .filter((r) => r.status === "open")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -274,8 +274,8 @@ const SAMPLE_SIGNALS = (p) => {
 };
 
 export async function getWishlistIds(user) {
-  if (!IS_MOCK) return remote("get", "/wishlist/ids/");
   if (!user?.email) return [];
+  if (!IS_MOCK) return remote("get", "/wishlist/ids/");
   return [...(getDb().wishlists[user.email] ?? [])];
 }
 

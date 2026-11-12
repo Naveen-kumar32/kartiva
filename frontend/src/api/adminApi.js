@@ -6,19 +6,31 @@ import { mockDelay } from "@/utils/mock";
 import { DAY_MS } from "@/utils/orderMath";
 
 import { notify } from "./marketOps";
-import { apiError, audit, commit, getDb, nextId, nowIso, resetDemoData } from "./mockDb";
+import { refreshCatalog } from "./bootstrap";
+import { apiError, audit, commit, getDb, nextId, nowIso, resetDemoData as resetMockData } from "./mockDb";
 import { findSubOrder, generateSettlementInDb, ledgerFor, markRefundPaidInDb, markSettlementPaidInDb, transitionSubOrder, updateReturnInDb } from "./orderOps";
 
 const run = async (fn, ms = 300) => mockDelay(await Promise.resolve().then(fn), ms);
 const remote = async (method, url, body) => (await axiosInstance[method](url, body)).data;
+const get = async (url, params) => (await axiosInstance.get(url, params ? { params } : undefined)).data;
+// API mode: after a change to categories, products, stores, ads or platform settings, reload the storefront's in-memory catalogue.
+const withCatalog = async (promise) => { const result = await promise; await refreshCatalog(); return result; };
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const liveSubs = (orders) => orders.flatMap((o) => o.subOrders.filter((s) => s.status !== "cancelled").map((s) => ({ ...s, createdAt: o.createdAt, order: o })));
 
-export { resetDemoData };
+// Reset demo data: api mode reloads the demo dataset on the server (admin only); mock mode clears this browser's copy.
+export async function resetDemoData() {
+  if (!IS_MOCK) {
+    await axiosInstance.post(API.ADMIN_RESET_DEMO);
+    window.location.reload();
+    return;
+  }
+  resetMockData();
+}
 
 // ---------- Dashboard ----------
 export async function getAdminDashboard() {
-  if (!IS_MOCK) return remote("get", API.ADMIN_DASHBOARD);
+  if (!IS_MOCK) return get(API.ADMIN_DASHBOARD);
   return run(() => {
     const db = getDb();
     const now = Date.now();
@@ -70,7 +82,7 @@ export async function getAdminDashboard() {
 
 // ---------- Categories ----------
 export async function getAdminCategories() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/categories/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_CATEGORIES);
   return run(() => {
     const db = getDb();
     return db.categories.map((c) => ({ ...c, productCount: db.products.filter((p) => p.categorySlug === c.slug && !p.deletedAt).length }));
@@ -78,7 +90,7 @@ export async function getAdminCategories() {
 }
 
 export async function saveCategory(category) {
-  if (!IS_MOCK) return remote(category.id ? "patch" : "post", `/admin-api/categories/${category.id ? `${category.id}/` : ""}`, category);
+  if (!IS_MOCK) return withCatalog(category.id ? remote("patch", API.ADMIN_CATEGORY(category.id), category) : remote("post", API.ADMIN_CATEGORIES, category));
   return run(() => {
     const db = getDb();
     const name = category.name.trim();
@@ -109,7 +121,7 @@ export async function saveCategory(category) {
 }
 
 export async function setCategoryActive(id, isActive) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/categories/${id}/`, { is_active: isActive });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_CATEGORY_ACTIVE(id), { isActive }));
   return run(() => {
     const db = getDb();
     const cat = db.categories.find((c) => c.id === id);
@@ -122,7 +134,7 @@ export async function setCategoryActive(id, isActive) {
 }
 
 export async function moveCategory(id, direction) {
-  if (!IS_MOCK) return remote("post", `/admin-api/categories/${id}/move/`, { direction });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_CATEGORY_MOVE(id), { direction }));
   return run(() => {
     const db = getDb();
     const cat = db.categories.find((c) => c.id === id);
@@ -139,7 +151,7 @@ export async function moveCategory(id, direction) {
 }
 
 export async function deleteCategory(id) {
-  if (!IS_MOCK) return remote("delete", `/admin-api/categories/${id}/`);
+  if (!IS_MOCK) return withCatalog(remote("delete", API.ADMIN_CATEGORY(id)));
   return run(() => {
     const db = getDb();
     const cat = db.categories.find((c) => c.id === id);
@@ -154,12 +166,12 @@ export async function deleteCategory(id) {
 
 // ---------- Products ----------
 export async function getAdminProducts() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/products/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_PRODUCTS);
   return run(() => getDb().products.filter((p) => !p.deletedAt).map((p) => ({ ...p, summary: summarizeProduct(p) })));
 }
 
 export async function moderateProduct(id, action, reason) {
-  if (!IS_MOCK) return remote("post", `/admin-api/products/${id}/${action}/`, { reason });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_PRODUCT_ACTION(id, action), { reason }));
   return run(() => {
     const p = getDb().products.find((x) => x.id === id);
     if (!p) throw apiError("Product not found.", 404);
@@ -176,12 +188,12 @@ export async function moderateProduct(id, action, reason) {
 
 // ---------- Orders ----------
 export async function getAdminOrders() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/orders/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_ORDERS);
   return run(() => getDb().orders);
 }
 
 export async function adminUpdateSubOrder(subOrderNumber, toStatus, details = {}) {
-  if (!IS_MOCK) return remote("post", `/admin-api/orders/sub-orders/${subOrderNumber}/status/`, { to_status: toStatus, ...details });
+  if (!IS_MOCK) return remote("post", API.ADMIN_SUB_ORDER_STATUS(subOrderNumber), { ...details, toStatus });
   return run(() => {
     const result = transitionSubOrder(subOrderNumber, toStatus, { actor: "admin", ...details });
     audit(`order.${toStatus}`, `Sub-order ${subOrderNumber}`, details.note ?? `Marked ${toStatus} by admin`);
@@ -192,13 +204,13 @@ export async function adminUpdateSubOrder(subOrderNumber, toStatus, details = {}
 
 // ---------- Sellers ----------
 export async function getSellerApplications() {
-  if (!IS_MOCK) return (await remote("get", API.ADMIN_SELLERS, { params: { status: "pending" } })).results;
+  if (!IS_MOCK) return get(API.ADMIN_APPLICATIONS);
   return run(() => getDb().applications);
 }
 
 const COLORS = ["#0891b2", "#9333ea", "#16a34a", "#dc2626", "#ca8a04", "#2563eb"];
 export async function decideSellerApplication(id, action, reason, actor) {
-  if (!IS_MOCK) return remote("post", API.ADMIN_SELLER_DECISION(id, action), { reason });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_APPLICATION_DECISION(id, action), { reason }));
   return run(() => {
     const db = getDb();
     const app = db.applications.find((a) => a.id === id);
@@ -227,7 +239,7 @@ export async function decideSellerApplication(id, action, reason, actor) {
 }
 
 export async function getAdminStores() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/stores/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_STORES);
   return run(() => {
     const db = getDb();
     return db.stores.map((store) => {
@@ -239,7 +251,7 @@ export async function getAdminStores() {
 }
 
 export async function setStoreStatus(slug, status, reason, actor) {
-  if (!IS_MOCK) return remote("post", `/admin-api/stores/${slug}/${status === "suspended" ? "suspend" : "reactivate"}/`, { reason });
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_STORE_ACTION(slug, "status"), { reason, status }));
   return run(() => {
     const store = getDb().stores.find((s) => s.slug === slug);
     store.status = status;
@@ -251,6 +263,7 @@ export async function setStoreStatus(slug, status, reason, actor) {
 }
 
 export async function toggleStoreFeatured(slug) {
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_STORE_ACTION(slug, "feature")));
   return run(() => {
     const store = getDb().stores.find((s) => s.slug === slug);
     store.isFeatured = !store.isFeatured;
@@ -262,7 +275,7 @@ export async function toggleStoreFeatured(slug) {
 
 // ---------- Buyers ----------
 export async function getAdminBuyers() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/buyers/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_BUYERS);
   return run(() => {
     const db = getDb();
     return db.buyers.map((b) => {
@@ -274,7 +287,7 @@ export async function getAdminBuyers() {
 }
 
 export async function updateBuyer(email, patch, actor) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/buyers/${encodeURIComponent(email)}/`, patch);
+  if (!IS_MOCK) return remote("patch", API.ADMIN_BUYER(email), patch);
   return run(() => {
     const buyer = getDb().buyers.find((b) => b.email === email);
     if (!buyer) throw apiError("Buyer not found.", 404);
@@ -288,12 +301,12 @@ export async function updateBuyer(email, patch, actor) {
 
 // ---------- Returns & refunds ----------
 export async function getAdminReturns() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/returns/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_RETURNS);
   return run(() => getDb().returns);
 }
 
 export async function adminActOnReturn(id, action, details) {
-  if (!IS_MOCK) return remote("post", `/admin-api/returns/${id}/${action}/`, details);
+  if (!IS_MOCK) return remote("post", API.ADMIN_RETURN_ACTION(id, action), details ?? {});
   return run(() => {
     const ret = updateReturnInDb(id, action, { actor: "admin", ...details });
     audit(`return.${action}`, `Return ${ret.number}`, details?.reason ?? `Admin ${action}`);
@@ -303,23 +316,23 @@ export async function adminActOnReturn(id, action, details) {
 }
 
 export async function getAdminRefunds() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/refunds/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_REFUNDS);
   return run(() => getDb().refunds);
 }
 
 export async function markRefundPaid(id, utr) {
-  if (!IS_MOCK) return remote("post", `/admin-api/refunds/${id}/mark-paid/`, { manual_reference: utr });
+  if (!IS_MOCK) return remote("post", API.ADMIN_REFUND_PAID(id), { utr });
   return run(() => { const r = markRefundPaidInDb(id, utr); audit("refund.paid", `Refund #${id}`, `₹${r.amount} to ${r.payoutTo} · UTR ${utr}`); commit(); return r; });
 }
 
 // ---------- Commission ----------
 export async function getCommissionRules() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/commission-rules/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_COMMISSION_RULES);
   return run(() => getDb().commissionRules, 150);
 }
 
 export async function saveCommissionRule(rule) {
-  if (!IS_MOCK) return remote(rule.id ? "patch" : "post", `/admin-api/commission-rules/${rule.id ? `${rule.id}/` : ""}`, rule);
+  if (!IS_MOCK) return rule.id ? remote("patch", API.ADMIN_COMMISSION_RULE(rule.id), rule) : remote("post", API.ADMIN_COMMISSION_RULES, rule);
   return run(() => {
     const db = getDb();
     const rate = Number(rule.rate);
@@ -336,6 +349,7 @@ export async function saveCommissionRule(rule) {
 }
 
 export async function deleteCommissionRule(id) {
+  if (!IS_MOCK) return remote("delete", API.ADMIN_COMMISSION_RULE(id));
   return run(() => {
     const db = getDb();
     const rule = db.commissionRules.find((r) => r.id === id);
@@ -349,7 +363,7 @@ export async function deleteCommissionRule(id) {
 
 // ---------- Settlements ----------
 export async function getAdminSettlements() {
-  if (!IS_MOCK) return remote("get", "/admin-api/settlements/");
+  if (!IS_MOCK) return get(API.ADMIN_SETTLEMENTS);
   return run(() => {
     const db = getDb();
     const stores = db.stores.map((store) => {
@@ -362,30 +376,28 @@ export async function getAdminSettlements() {
 }
 
 export async function generateSettlement(storeSlug) {
-  if (!IS_MOCK) return remote("post", "/admin-api/settlements/", { store: storeSlug });
+  if (!IS_MOCK) return remote("post", API.ADMIN_SETTLEMENTS, { storeSlug });
   return run(() => { const s = generateSettlementInDb(storeSlug); audit("settlement.created", s.number, `${storeSlug} · net ₹${s.net}`); commit(); return s; });
 }
 
 export async function markSettlementPaid(id, utr) {
-  if (!IS_MOCK) return remote("post", `/admin-api/settlements/${id}/mark-paid/`, { payment_reference: utr });
+  if (!IS_MOCK) return remote("post", API.ADMIN_SETTLEMENT_PAID(id), { utr });
   return run(() => { const s = markSettlementPaidInDb(id, utr); audit("settlement.paid", s.number, `UTR ${utr}`); commit(); return s; });
 }
 
 export async function getStoreLedger(storeSlug) {
+  if (!IS_MOCK) return get(API.ADMIN_STORE_ACTION(storeSlug, "ledger"));
   return run(() => ledgerFor(storeSlug), 150);
 }
 
 // ---------- Ads ----------
 export async function getAdManager() {
-  if (!IS_MOCK) {
-    const [slots, ads] = await Promise.all([remote("get", API.ADMIN_AD_SLOTS), remote("get", API.ADMIN_ADS)]);
-    return { ads: ads.results, slots: slots.results };
-  }
+  if (!IS_MOCK) return get(API.ADMIN_AD_MANAGER);
   return run(() => ({ ads: getDb().ads, slots: getDb().adSlots }));
 }
 
 export async function saveAd(ad) {
-  if (!IS_MOCK) return remote(ad.id ? "patch" : "post", `${API.ADMIN_ADS}${ad.id ? `${ad.id}/` : ""}`, ad);
+  if (!IS_MOCK) return withCatalog(ad.id ? remote("patch", API.ADMIN_AD(ad.id), ad) : remote("post", API.ADMIN_ADS, ad));
   return run(() => {
     const db = getDb();
     const slot = db.adSlots.find((s) => s.key === ad.slot);
@@ -408,7 +420,7 @@ export async function saveAd(ad) {
 }
 
 export async function setAdStatus(id, status) {
-  if (!IS_MOCK) return remote("post", `${API.ADMIN_ADS}${id}/${status}/`);
+  if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_AD_STATUS(id), { status }));
   return run(() => {
     const ad = getDb().ads.find((a) => a.id === id);
     ad.status = status;
@@ -419,6 +431,7 @@ export async function setAdStatus(id, status) {
 }
 
 export async function setSlotActive(key, isActive) {
+  if (!IS_MOCK) return withCatalog(remote("patch", API.ADMIN_AD_SLOT(key), { isActive }));
   return run(() => {
     const slot = getDb().adSlots.find((s) => s.key === key);
     slot.isActive = isActive;
@@ -429,12 +442,13 @@ export async function setSlotActive(key, isActive) {
 }
 
 export async function updateSlotRate(key, rateLabel) {
+  if (!IS_MOCK) return withCatalog(remote("patch", API.ADMIN_AD_SLOT(key), { rateLabel }));
   return run(() => { const slot = getDb().adSlots.find((s) => s.key === key); slot.rateLabel = rateLabel; audit("adslot.rate", slot.name, rateLabel); commit(); return slot; }, 150);
 }
 
 // ---------- Reports ----------
 export async function getReports({ from, to }) {
-  if (!IS_MOCK) return remote("get", "/admin-api/reports/", { params: { from, to } });
+  if (!IS_MOCK) return get(API.ADMIN_REPORTS, { from, to });
   return run(() => {
     const db = getDb();
     const inRange = (iso) => (!from || iso.slice(0, 10) >= from) && (!to || iso.slice(0, 10) <= to);
@@ -474,7 +488,7 @@ export async function getReports({ from, to }) {
 
 // ---------- Reviews ----------
 export async function getAdminReviews() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/reviews/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_REVIEWS);
   return run(() => {
     const db = getDb();
     return db.products.filter((p) => !p.deletedAt).slice(0, 30).flatMap((p) => buildReviews(p, 3).map((r) => ({ ...r, hidden: db.hiddenReviews.includes(r.id), productName: p.name, productSlug: p.slug, storeSlug: p.storeSlug })));
@@ -482,7 +496,7 @@ export async function getAdminReviews() {
 }
 
 export async function setReviewHidden(id, hidden) {
-  if (!IS_MOCK) return remote("patch", `/admin-api/reviews/${id}/`, { status: hidden ? "hidden" : "published" });
+  if (!IS_MOCK) return remote("patch", API.ADMIN_REVIEW(id), { hidden });
   return run(() => {
     const list = getDb().hiddenReviews; // mutate in place so the change persists
     const i = list.indexOf(id);
@@ -496,17 +510,17 @@ export async function setReviewHidden(id, hidden) {
 
 // ---------- Audit & settings ----------
 export async function getAuditLog() {
-  if (!IS_MOCK) return (await remote("get", "/admin-api/audit-logs/")).results;
+  if (!IS_MOCK) return get(API.ADMIN_AUDIT_LOG);
   return run(() => getDb().auditLog, 200);
 }
 
 export async function getPlatformSettings() {
-  if (!IS_MOCK) return remote("get", API.ADMIN_SETTINGS);
+  if (!IS_MOCK) return get(API.ADMIN_SETTINGS);
   return run(() => ({ ...getDb().platform }), 150);
 }
 
 export async function savePlatformSettings(patch) {
-  if (!IS_MOCK) return remote("patch", API.ADMIN_SETTINGS, patch);
+  if (!IS_MOCK) return withCatalog(remote("patch", API.ADMIN_SETTINGS, patch));
   return run(() => {
     const p = getDb().platform;
     // Whitelist: only known settings keys can be written; internal keys (idempotency, homeSections …) are not editable here.
@@ -521,5 +535,6 @@ export async function savePlatformSettings(patch) {
 }
 
 export async function getAllSubOrder(subOrderNumber) {
+  if (!IS_MOCK) return get(API.ADMIN_SUB_ORDER(subOrderNumber));
   return run(() => findSubOrder(subOrderNumber), 100);
 }

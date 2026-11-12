@@ -3,6 +3,7 @@
 // CATEGORIES / PRODUCTS / STORES / ADS sees admin & seller edits immediately (e.g. a new category
 // appears in the storefront menu). Replaced by Django in Phase 3+ — pages only talk to src/api/*.
 import { ADS, AD_SLOTS, buildMarketSeed, buildSeed, CATEGORIES, DEMO_USERS, PLATFORM, PRODUCTS, SELLER_APPLICATIONS, STORES } from "@/data";
+import { IS_MOCK } from "@/config/env";
 import { readJSON, writeJSON } from "@/utils/storage";
 
 const KEY = "kartiva.mockDb.v11";
@@ -79,5 +80,6 @@ export const apiError = (detail, status = 400) => Object.assign(new Error(detail
 
 export const nowIso = () => new Date().toISOString();
 
-// Eagerly load at import so live arrays are hydrated before the first render.
-load();
+// Mock mode only: eagerly load at import so live arrays are hydrated before the first render.
+// In api mode the backend is the source of truth (src/api/bootstrap.js hydrates the arrays instead).
+if (IS_MOCK) load();

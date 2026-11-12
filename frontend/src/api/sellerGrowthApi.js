@@ -1,19 +1,22 @@
 // Seller Hub growth API (IndiaMART / Alibaba / JustDial style): leads, buy requests (RFQ) & quotes, customers (CRM),
 // analytics, business profile & KYC, membership plan, team, bulk upload and support tickets.
 // Every function takes the seller's storeSlug first and only ever reads/writes that store's data (404 otherwise).
-import { IS_MOCK } from "@/config";
+import { API, axiosInstance, IS_MOCK } from "@/config";
 import { BUSINESS_TYPES, TURNOVER_BANDS } from "@/constants";
 import { ROUTES } from "@/locales";
 import { mockDelay } from "@/utils/mock";
 import { DAY_MS } from "@/utils/orderMath";
 
+import { refreshCatalog } from "./bootstrap";
 import { notify, openThread, recomputeKyc, refreshBadges } from "./marketOps";
 import { apiError, audit, commit, getDb, nextId, nowIso } from "./mockDb";
 import { assertStoreAccess } from "./session";
 import { moveStock } from "./orderOps";
 
 const run = async (fn, ms = 300) => mockDelay(await Promise.resolve().then(fn), ms);
-const remote = async () => { throw apiError("This Seller Hub feature arrives with the backend (Phase 5).", 501); };
+const remote = async (method, url, body, config) => (await axiosInstance[method](url, body, config)).data;
+// Changes that affect the public catalogue / store cards also refresh the in-memory catalogue (api mode).
+const remoteAndRefresh = async (...args) => { const data = await remote(...args); await refreshCatalog(); return data; };
 const ownStore = (storeSlug) => {
   assertStoreAccess(storeSlug); // the session must own this store
   const store = getDb().stores.find((s) => s.slug === storeSlug);
@@ -74,7 +77,7 @@ function decorateLead(lead, store) {
 }
 
 export async function getSellerLeads(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_LEADS);
   return run(() => {
     const store = ownStore(storeSlug);
     const leads = getDb().enquiries.filter((e) => e.storeSlug === storeSlug).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -103,7 +106,7 @@ const ownLead = (storeSlug, id) => {
 const LEAD_STATUSES = ["new", "contacted", "quoted", "won", "lost", "spam"];
 
 export async function updateLeadStatus(storeSlug, id, status, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_LEAD(id, "status"), { status });
   return run(() => {
     const store = ownStore(storeSlug);
     const lead = ownLead(storeSlug, id);
@@ -122,7 +125,7 @@ export async function updateLeadStatus(storeSlug, id, status, actor) {
   }, 200);
 }
 export async function addLeadNote(storeSlug, id, text, author) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_LEAD(id, "notes"), { text });
   return run(() => {
     const store = ownStore(storeSlug);
     const lead = ownLead(storeSlug, id);
@@ -136,7 +139,7 @@ export async function addLeadNote(storeSlug, id, text, author) {
 
 // Opens (or reuses) the buyer conversation for an enquiry and returns its id.
 export async function replyToLead(storeSlug, id) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_LEAD(id, "reply"));
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -187,7 +190,7 @@ function decorateRfq(rfq, storeSlug, slugs) {
 }
 
 export async function getSellerRfqs(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_RFQS);
   return run(() => {
     const store = ownStore(storeSlug);
     const slugs = matchingSlugs(storeSlug);
@@ -198,7 +201,7 @@ export async function getSellerRfqs(storeSlug) {
 
 // Seller opened a request that was sent to them → admin sees "viewed" in Product requests.
 export async function markRfqViewed(storeSlug, rfqId) {
-  if (!IS_MOCK) return remote("post", `/seller/rfqs/${rfqId}/viewed/`);
+  if (!IS_MOCK) return remote("post", API.SELLER_RFQ(rfqId, "viewed"));
   return run(() => {
     ownStore(storeSlug);
     const dispatch = getDb().rfqs.find((r) => r.id === Number(rfqId))?.dispatches?.find((d) => d.storeSlug === storeSlug);
@@ -209,7 +212,7 @@ export async function markRfqViewed(storeSlug, rfqId) {
 
 /** quote: { pricePerUnit, leadTimeDays, validTill (yyyy-mm-dd), note } */
 export async function submitRfqQuote(storeSlug, rfqId, quote, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_RFQ(rfqId, "quote"), quote);
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -256,7 +259,7 @@ function segmentOf(c) {
 }
 
 export async function getSellerCustomers(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_CUSTOMERS);
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -288,7 +291,7 @@ export async function getSellerCustomers(storeSlug) {
 }
 
 export async function saveCustomerNotes(storeSlug, email, { notes, tags }) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("put", API.SELLER_CUSTOMER_NOTES, { email, notes, tags });
   return run(() => {
     const store = ownStore(storeSlug);
     const known = subOrdersOf(storeSlug).some((s) => s.buyer.email === email) || getDb().enquiries.some((e) => e.storeSlug === storeSlug && e.buyer.email === email);
@@ -317,7 +320,7 @@ const between = (rand, min, max) => min + rand() * (max - min);
 const STOP = new Set(["with", "and", "for", "the", "pack", "of", "set", "in", "-", "&"]);
 
 export async function getSellerAnalytics(storeSlug, days = 30) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_ANALYTICS, { params: { days } });
   return run(() => {
     const d = getDb();
     ownStore(storeSlug);
@@ -402,9 +405,17 @@ export async function getSellerAnalytics(storeSlug, days = 30) {
 // ---------- Business profile & KYC ----------
 export const KYC_DOC_TYPES = { optional: ["address_proof", "trade_licence", "fssai_bis_licence"], required: ["gst_certificate", "pan_card", "cancelled_cheque"] };
 const KYC_MAX_KB = 5 * 1024;
+// Multipart body for the KYC upload: the File itself when the page passes one, else just its metadata.
+const kycForm = (docType, file) => {
+  const form = new FormData();
+  form.append("docType", docType);
+  if (typeof Blob !== "undefined" && file instanceof Blob) form.append("file", file);
+  else Object.entries({ name: file?.name ?? "", size: file?.size ?? 0, type: file?.type ?? "" }).forEach(([k, v]) => form.append(k, String(v)));
+  return form;
+};
 
 export async function getBusinessProfile(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_BUSINESS);
   return run(() => {
     const store = ownStore(storeSlug);
     const docs = getDb().kycDocuments.filter((k) => k.storeSlug === storeSlug).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
@@ -414,7 +425,7 @@ export async function getBusinessProfile(storeSlug) {
 }
 
 export async function updateBusinessProfile(storeSlug, patch, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remoteAndRefresh("patch", API.SELLER_BUSINESS, patch);
   return run(() => {
     const store = ownStore(storeSlug);
     const year = Number(patch.yearEstablished);
@@ -436,7 +447,7 @@ export async function updateBusinessProfile(storeSlug, patch, actor) {
 
 /** file: { name, size (bytes), type (mime) } — only metadata is stored, never the file contents. */
 export async function uploadKycDocument(storeSlug, docType, file, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_KYC, kycForm(docType, file), { headers: { "Content-Type": "multipart/form-data" } });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -462,7 +473,7 @@ export async function uploadKycDocument(storeSlug, docType, file, actor) {
 // ---------- Membership plan ----------
 const GST_RATE = 18;
 export async function getSellerPlan(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_PLAN);
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -472,7 +483,7 @@ export async function getSellerPlan(storeSlug) {
 }
 
 export async function changeSellerPlan(storeSlug, planCode, { paymentRef } = {}, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_PLAN_CHANGE, { paymentRef, planCode });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -511,12 +522,12 @@ const ownMember = (storeSlug, id) => {
 };
 
 export async function getSellerTeam(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_TEAM);
   return run(() => { ownStore(storeSlug); return getDb().sellerStaff.filter((s) => s.storeSlug === storeSlug); }, 200);
 }
 
 export async function inviteTeamMember(storeSlug, { email, name, role }, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_TEAM, { email, name, role });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -534,7 +545,7 @@ export async function inviteTeamMember(storeSlug, { email, name, role }, actor) 
 }
 
 export async function updateTeamMember(storeSlug, id, patch, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("patch", `${API.SELLER_TEAM}${id}/`, patch);
   return run(() => {
     const store = ownStore(storeSlug);
     const m = ownMember(storeSlug, id);
@@ -563,7 +574,7 @@ export async function updateTeamMember(storeSlug, id, patch, actor) {
 }
 
 export async function removeTeamMember(storeSlug, id, actor) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("delete", `${API.SELLER_TEAM}${id}/`);
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -578,7 +589,7 @@ export async function removeTeamMember(storeSlug, id, actor) {
 
 // ---------- Bulk upload ----------
 export async function getBulkUploadData(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_BULK);
   return run(() => {
     const store = ownStore(storeSlug);
     const variants = getDb().products.filter((p) => p.storeSlug === storeSlug && !p.deletedAt).flatMap((p) => p.variants.map((v) => ({
@@ -596,7 +607,7 @@ function recordUpload(store, entry) {
 
 /** rows: [{ sku, price, mrp, stock }] — applied only to this store's SKUs. */
 export async function applyBulkPriceStock(storeSlug, rows, fileName) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_BULK_PRICE_STOCK, { fileName, rows });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -629,7 +640,7 @@ const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|
 
 /** rows: [{ name, categorySlug, brand, description, price, mrp, stock, hsn, gstRate, imageUrl }] */
 export async function bulkCreateProducts(storeSlug, rows, fileName) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_BULK_PRODUCTS, { fileName, rows });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -691,12 +702,12 @@ const ownTicket = (storeSlug, id) => {
 const nextMessageId = () => getDb().tickets.flatMap((t) => t.messages).reduce((m, x) => Math.max(m, x.id), 0) + 1;
 
 export async function getSellerTickets(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_TICKETS);
   return run(() => { ownStore(storeSlug); return getDb().tickets.filter((t) => t.raisedBy?.storeSlug === storeSlug).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }, 200);
 }
 
 export async function createSellerTicket(storeSlug, user, { category, message, priority, subject }) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_TICKETS, { category, message, priority, subject });
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -718,7 +729,7 @@ export async function createSellerTicket(storeSlug, user, { category, message, p
 }
 
 export async function replySellerTicket(storeSlug, id, body) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_TICKET(id, "reply"), { body });
   return run(() => {
     const store = ownStore(storeSlug);
     const t = ownTicket(storeSlug, id);
@@ -734,7 +745,7 @@ export async function replySellerTicket(storeSlug, id, body) {
 }
 
 export async function resolveSellerTicket(storeSlug, id) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("post", API.SELLER_TICKET(id, "resolve"));
   return run(() => {
     const t = ownTicket(storeSlug, id);
     t.status = "resolved";
@@ -747,7 +758,7 @@ export async function resolveSellerTicket(storeSlug, id) {
 
 // ---------- Dashboard summary ----------
 export async function getSellerGrowthSummary(storeSlug) {
-  if (!IS_MOCK) return remote();
+  if (!IS_MOCK) return remote("get", API.SELLER_GROWTH_SUMMARY);
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);

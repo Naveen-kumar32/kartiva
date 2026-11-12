@@ -1,6 +1,6 @@
 // "What's new" for sellers and admins: last-seen timestamps per page (so new orders get a NEW badge until
-// opened) and sidebar counts. In api mode the backend stores last-seen per user.
-import { IS_MOCK } from "@/config";
+// opened) and sidebar counts. In api mode the backend stores last-seen per user (/activity/seen/) and computes the counts.
+import { API, axiosInstance, IS_MOCK } from "@/config";
 
 import { commit, getDb, nowIso } from "./mockDb";
 
@@ -21,7 +21,12 @@ export function getLastSeen(user, area) {
 
 // Returns the PREVIOUS last-seen time (to badge rows newer than it) and records "now".
 export async function markSeen(user, area) {
-  if (!IS_MOCK || !user) return fallback();
+  if (!user) return fallback();
+  if (!IS_MOCK) {
+    const { changed, previous } = (await axiosInstance.post(API.ACTIVITY_SEEN, { area })).data;
+    if (changed) window.dispatchEvent(new Event(SEEN_EVENT)); // sidebars refresh their count bubbles
+    return previous;
+  }
   const key = keyOf(user, area);
   const current = entry(key);
   if (current && Date.now() - new Date(current.at).getTime() < REPEAT_MS) return current.prev;
@@ -34,7 +39,8 @@ export async function markSeen(user, area) {
 
 // Sidebar badge counts, keyed by nav path.
 export async function getNavCounts(user) {
-  if (!IS_MOCK || !user) return {};
+  if (!user || !["admin", "seller"].includes(user.role)) return {};
+  if (!IS_MOCK) return (await axiosInstance.get(API.ACTIVITY_NAV_COUNTS)).data;
   const db = getDb();
   const after = (iso, area) => iso > getLastSeen(user, area);
   if (user.role === "seller") {

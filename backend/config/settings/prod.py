@@ -1,0 +1,11 @@
+from .base import *  # noqa: F401,F403
+from .base import env_bool
+
+DEBUG = False
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_HSTS_SECONDS = 31536000 if env_bool("ENABLE_HSTS", True) else 0
+REFRESH_COOKIE["secure"] = True  # noqa: F405
+STORAGES = {"staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}, "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}}

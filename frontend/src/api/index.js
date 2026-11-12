@@ -3,6 +3,7 @@ export * from "./adminApi";
 export * from "./adminGrowthApi";
 export * from "./adsApi";
 export * from "./authApi";
+export * from "./bootstrap";
 export * from "./buyerMarketApi";
 export * from "./catalogApi";
 export * from "./mailApi";
