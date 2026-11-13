@@ -15,6 +15,10 @@ import { PriceTag, Rating, SmartImage } from "../ui";
 import { TradeChips } from "./TradeChips";
 import { WishlistButton } from "./WishlistButton";
 
+// Products a seller added in the last 14 days get a "New" tag (they are also listed first by default).
+const NEW_FOR_MS = 14 * 86_400_000;
+const isNewArrival = (p) => Boolean(p.createdAt) && Date.now() - new Date(p.createdAt).getTime() < NEW_FOR_MS;
+
 export function ProductCard({ className, product, sponsored = false }) {
   const dispatch = useDispatch();
   const { discount, hasRange, mrp, price, totalStock } = product.summary;
@@ -55,7 +59,9 @@ export function ProductCard({ className, product, sponsored = false }) {
       <div className="mt-3 flex flex-1 flex-col">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-xs font-medium uppercase tracking-wide text-muted">{product.brand}</span>
-          {sponsored && <SponsoredBadge />}
+          {sponsored ? <SponsoredBadge /> : isNewArrival(product) && (
+            <span className="shrink-0 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700">{EN.PRODUCT.NEW_ARRIVAL}</span>
+          )}
         </div>
         <h3 className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-ink group-hover:text-brand-700">{product.name}</h3>
         <Rating className="mt-1.5" count={product.reviewCount} value={product.rating} />

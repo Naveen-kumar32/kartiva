@@ -272,7 +272,8 @@ def products(params):
 
     sort = params.get("sort") or "relevance"
     if sort == "relevance":
-        lst.sort(key=lambda p: (p.get("score") or 0, p.get("soldCount") or 0), reverse=True)
+        # Default order: best search match first, then the most recently added products on top.
+        lst.sort(key=lambda p: (p.get("score") or 0, p.get("createdAt") or ""), reverse=True)
     else:
         key, rev = SORTERS.get(sort, SORTERS["popular"])
         lst.sort(key=key, reverse=rev)

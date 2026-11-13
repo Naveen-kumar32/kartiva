@@ -59,6 +59,8 @@ export function Listing() {
   const { data, error, loading, reload } = useAsync(() => getProducts({ ...filters, category: slug }), [slug, params.toString()]);
   const { data: sponsored } = useAsync(() => getSlotAds(AD_SLOT_KEYS.LISTING_SPONSORED, { categorySlug: slug, query: filters.q }), [slug, filters.q]);
 
+  // Banner ads follow the page: a laptops page shows laptop ads, a search shows ads matching the query.
+  const adContext = { categorySlug: slug, query: filters.q };
   const update = (patch) => setParams(writeFilters({ ...filters, ...patch, page: patch.page ?? 1 }));
   const clear = () => setParams(writeFilters({ q: filters.q, sort: filters.sort }));
   const sponsoredProducts = filters.page === 1 ? (sponsored?.items ?? []).map((a) => a.product).filter(Boolean) : [];
@@ -69,11 +71,11 @@ export function Listing() {
   return (
     <Container className="pt-4 sm:pt-6">
       <Breadcrumbs items={crumbs} />
-      <AdSlot className="mb-6" slotKey={AD_SLOT_KEYS.LISTING_TOP_BANNER} />
+      <AdSlot className="mb-6" context={adContext} slotKey={AD_SLOT_KEYS.LISTING_TOP_BANNER} />
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="hidden lg:block">
           <div className="rounded-2xl bg-white p-4 shadow-card">{panel}</div>
-          <AdSlot className="mt-6" slotKey={AD_SLOT_KEYS.LISTING_SIDEBAR} variant="tall" />
+          <AdSlot className="mt-6" context={adContext} slotKey={AD_SLOT_KEYS.LISTING_SIDEBAR} variant="tall" />
         </aside>
         <section aria-labelledby="listing-title">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

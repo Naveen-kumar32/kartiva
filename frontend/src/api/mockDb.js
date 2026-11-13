@@ -6,7 +6,7 @@ import { ADS, AD_SLOTS, buildMarketSeed, buildSeed, CATEGORIES, DEMO_USERS, PLAT
 import { IS_MOCK } from "@/config/env";
 import { readJSON, writeJSON } from "@/utils/storage";
 
-const KEY = "kartiva.mockDb.v11";
+const KEY = "kartiva.mockDb.v12";
 const LIVE = { adSlots: AD_SLOTS, ads: ADS, applications: SELLER_APPLICATIONS, categories: CATEGORIES, products: PRODUCTS, stores: STORES };
 
 let state = null;

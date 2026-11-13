@@ -1,4 +1,5 @@
 """Ad serving — port of getSlotAds() in frontend src/api/adsApi.js (contextual targeting + impressions)."""
+import random
 from datetime import timezone as dt_timezone
 
 from django.utils import timezone
@@ -52,7 +53,10 @@ def slot_ads(slot_key, category_slug=None, query=None, exclude_product_id=None):
             if not product or not cat.is_public(product) or not matches_context(product, cat, category_slug, query, exclude_product_id):
                 continue
         live.append(ad)
-    live.sort(key=lambda a: a.get("priority") or 0, reverse=True)
+    # Banners rotate: equal-priority ads are shuffled so every matching advertiser gets shown.
+    if (slot or {}).get("format") == "banner":
+        random.shuffle(live)
+    live.sort(key=lambda a: a.get("priority") or 0, reverse=True)  # stable sort keeps the shuffle within a priority
     items = []
     for ad in live[: (slot or {}).get("maxItems") or 1]:
         product = products.get(ad.get("productId")) if ad.get("productId") else None

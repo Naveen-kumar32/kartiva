@@ -33,7 +33,10 @@ export async function getSlotAds(slotKey, context = {}) {
   const items = ADS.filter((a) => a.slot === slotKey && a.status === "active" && a.startsAt <= today() && a.endsAt >= today())
     .filter((a) => !a.productId || isPublicProduct(getProductById(a.productId) ?? {}))
     .filter((a) => !a.productId || matchesContext(getProductById(a.productId), context))
-    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)).slice(0, slot?.maxItems ?? 1)
+    // Banners rotate: equal-priority ads are shuffled so every matching advertiser gets shown.
+    .map((a) => ({ a, r: slot?.format === "banner" ? Math.random() : 0 }))
+    .sort((x, y) => (y.a.priority ?? 0) - (x.a.priority ?? 0) || x.r - y.r).map((x) => x.a)
+    .slice(0, slot?.maxItems ?? 1)
     .map((ad) => {
       const product = ad.productId ? getProductById(ad.productId) : null;
       return {

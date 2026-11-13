@@ -2318,6 +2318,7 @@ export const EN = {
     IN_STOCK: "In stock",
     INCLUSIVE_TAXES: "Inclusive of all taxes",
     MRP: "M.R.P.",
+    NEW_ARRIVAL: "New",
     NON_RETURNABLE: "Not returnable",
     ONLY_LEFT: (n) => `Only ${n} left`,
     OUT_OF_STOCK: "Out of stock",

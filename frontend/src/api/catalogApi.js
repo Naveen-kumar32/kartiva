@@ -118,7 +118,8 @@ export async function getProducts(params = {}) {
     if (values?.length) list = list.filter((p) => p.variants.some((v) => values.includes(v.attributes[name])));
   });
 
-  if (sort === "relevance") list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || b.soldCount - a.soldCount);
+  // Default order: best search match first, then the most recently added products on top.
+  if (sort === "relevance") list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || SORTERS.newest(a, b));
   else list.sort(SORTERS[sort] ?? SORTERS.popular);
 
   const count = list.length;
