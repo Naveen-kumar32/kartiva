@@ -1,15 +1,16 @@
 import { useFormik } from "formik";
-import { Check, Pause, Pencil, Play, Plus, X } from "lucide-react";
+import { Check, ImagePlus, Pause, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { getAdManager, saveAd, setAdStatus, setSlotActive, updateSlotRate } from "@/api";
+import { deleteAd, getAdManager, saveAd, setAdStatus, setSlotActive, updateSlotRate } from "@/api";
 import {
-  AdCreative, Badge, Button, DataTable, FormInput, FormSelect, Modal, PageHeader, PageLoader, Panel, ProductCard, PromptDialog, Select, StatCard, StatusBadge, Tabs, Toggle,
+  AdCreative, Badge, Button, ConfirmDialog, DataTable, FormInput, FormSelect, Modal, PageHeader, PageLoader, Panel, ProductCard, PromptDialog, Select, StatCard, StatusBadge, Tabs, Toggle,
 } from "@/components";
 import { PRODUCTS, STORES } from "@/data";
 import { useAsync, useDocumentTitle } from "@/hooks";
 import { EN } from "@/locales";
 import { getStore, summarizeProduct } from "@/utils/catalog";
+import { compressImage } from "@/utils/image";
 import { formatCompactInr, formatCurrency, formatNumber, formatPercent } from "@/utils/format";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { errorToast, successToast } from "@/utils/toast";
@@ -39,6 +40,7 @@ export function AdminAds() {
   const [slotFilter, setSlotFilter] = useState("");
   const [editing, setEditing] = useState(null); // null | {} (new) | ad
   const [rateSlot, setRateSlot] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const ads = useMemo(() => (data?.ads ?? []).filter((a) => a.status !== "pending_approval" && a.status !== "rejected" && (!slotFilter || a.slot === slotFilter)), [data, slotFilter]);
   if (loading) return <PageLoader />;
@@ -89,6 +91,7 @@ export function AdminAds() {
                         {a.status === "active" ? <Pause className="size-4" /> : <Play className="size-4" />}
                       </Button>
                     )}
+                    <Button aria-label={T.DELETE_AD} onClick={() => setDeleting(a)} size="sm" variant="ghost"><Trash2 className="size-4 text-red-600" /></Button>
                   </span>
                 ) },
               ]}
@@ -135,6 +138,15 @@ export function AdminAds() {
       </Panel>
 
       {editing && <AdEditor ad={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} slots={slots} />}
+      <ConfirmDialog
+        body={deleting && T.DELETE_AD_BODY(deleting.advertiser)}
+        confirmLabel={T.DELETE_AD}
+        danger
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => act(() => deleteAd(deleting.id), T.AD_DELETED).then(() => setDeleting(null))}
+        open={Boolean(deleting)}
+        title={T.DELETE_AD}
+      />
       <PromptDialog
         body={rateSlot?.name}
         confirmLabel={EN.COMMON.SAVE}
@@ -156,7 +168,7 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
   const formik = useFormik({
     initialValues: {
       advertiser: ad.advertiser ?? "Kartiva", advertiserType: ad.advertiserType ?? "house", budget: ad.budget ?? "", cta: ad.cta ?? "Shop now", endsAt: ad.endsAt ?? plusDays(14),
-      eyebrow: ad.eyebrow ?? "", headline: ad.headline ?? "", link: ad.link ?? "/", pricing: ad.pricing ?? "free", priority: ad.priority ?? 0, productId: ad.productId ?? "",
+      eyebrow: ad.eyebrow ?? "", headline: ad.headline ?? "", imageUrl: ad.imageUrl ?? "", link: ad.link ?? "/", pricing: ad.pricing ?? "free", priority: ad.priority ?? 0, productId: ad.productId ?? "",
       rate: ad.rate ?? 0, slot: ad.slot ?? "home_hero_carousel", startsAt: ad.startsAt ?? today(), status: ad.status, storeSlug: ad.storeSlug ?? "", subtext: ad.subtext ?? "", theme: ad.theme ?? THEMES[0][1],
     },
     onSubmit: async (values) => {
@@ -174,6 +186,11 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
   const sponsored = slot?.format === "sponsored_products";
   const products = PRODUCTS.filter((p) => p.status === "active" && !p.deletedAt && (values.advertiserType !== "seller" || !values.storeSlug || p.storeSlug === values.storeSlug));
   const previewProduct = PRODUCTS.find((p) => p.id === Number(values.productId));
+  const onImage = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    try { setFieldValue("imageUrl", await compressImage(file)); } catch { errorToast(T.AD_IMAGE_BAD); }
+  };
   const f = (name, label, props = {}) => <FormInput error={errors[name]} label={label} name={name} onBlur={handleBlur} onChange={handleChange} touched={touched[name]} value={values[name]} {...props} />;
 
   return (
@@ -194,6 +211,18 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
             {f("cta", T.CTA)}
             {f("headline", T.HEADLINE, { className: "sm:col-span-2" })}
             {f("subtext", T.SUBTEXT, { className: "sm:col-span-2" })}
+            <div className="sm:col-span-2">
+              <p className="mb-1 text-sm font-medium">{T.AD_IMAGE}</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {values.imageUrl && <img alt="" className="size-16 rounded-lg border border-line object-contain" src={values.imageUrl} />}
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:bg-slate-50">
+                  <ImagePlus className="size-4" />{T.AD_IMAGE_UPLOAD}
+                  <input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onImage} type="file" />
+                </label>
+                {values.imageUrl && <Button onClick={() => setFieldValue("imageUrl", "")} size="sm" variant="ghost">{T.AD_IMAGE_REMOVE}</Button>}
+              </div>
+              <p className="mt-1 text-xs text-muted">{T.AD_IMAGE_HINT}</p>
+            </div>
             {f("link", T.LINK, { hint: T.LINK_HINT })}
             <FormSelect label={T.THEME} name="theme" onChange={handleChange} options={THEMES.map(([label, value]) => ({ label, value }))} value={values.theme} />
           </div>
@@ -212,7 +241,7 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
           <p className="mb-2 text-sm font-semibold">{T.PREVIEW}</p>
           {sponsored
             ? previewProduct && <div className="max-w-48"><ProductCard product={{ ...previewProduct, store: getStore(previewProduct.storeSlug), summary: summarizeProduct(previewProduct) }} sponsored /></div>
-            : <div className="pointer-events-none"><AdCreative ad={{ ...values, advertiserType: values.advertiserType, link: "#", product: previewProduct }} layout="wide" /></div>}
+            : <div className="pointer-events-none"><AdCreative ad={{ ...values, advertiserType: values.advertiserType, imageUrl: values.imageUrl || undefined, link: "#", product: previewProduct }} layout="wide" /></div>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">

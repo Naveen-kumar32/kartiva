@@ -374,7 +374,7 @@ def seller_ads(request):
     user, store_row = seller(request)
     slug = store_row.slug
     if request.method == "GET":
-        return Response({"results": [a.data for a in Ad.objects.filter(store_slug=slug).order_by("id") if a.data.get("advertiserType") == "seller"]})
+        return Response({"results": [a.data for a in Ad.objects.filter(store_slug=slug).exclude(status="deleted").order_by("id") if a.data.get("advertiserType") == "seller"]})
     b = request.data
     store = store_row.data
     product = own_product(slug, b.get("productId")).data

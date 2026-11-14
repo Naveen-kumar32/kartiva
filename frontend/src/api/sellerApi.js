@@ -269,7 +269,7 @@ export async function getSellerEarnings(storeSlug) {
 // ---------- Ads ----------
 export async function getSellerAds(storeSlug) {
   if (!IS_MOCK) return (await remote("get", API.SELLER_ADS)).results;
-  return run(() => getDb().ads.filter((a) => a.storeSlug === storeSlug && a.advertiserType === "seller"));
+  return run(() => getDb().ads.filter((a) => a.storeSlug === storeSlug && a.advertiserType === "seller" && a.status !== "deleted"));
 }
 
 export async function requestSellerAd(storeSlug, { budget, days, productId, slot }) {

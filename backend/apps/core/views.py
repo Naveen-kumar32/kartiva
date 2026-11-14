@@ -39,7 +39,7 @@ def bootstrap(request):
     platform = {k: v for k, v in get_platform().items() if k not in {"idempotency", "dismissedRiskFlags"}}
     return Response({
         "adSlots": [a.to_dict() for a in AdSlot.objects.all()],
-        "ads": [a.to_dict() for a in Ad.objects.all()],
+        "ads": [a.to_dict() for a in Ad.objects.exclude(status="deleted")],
         "announcement": get_singleton("announcement"),
         "categories": categories,
         "platform": platform,

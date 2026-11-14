@@ -446,10 +446,13 @@ def settlement_mark_paid(request, pk):
 AD_FIELDS = ["advertiser", "advertiserType", "cta", "endsAt", "eyebrow", "headline", "link", "pricing", "slot", "startsAt", "storeSlug", "subtext", "theme"]
 AD_STATUSES = {"active", "paused", "rejected", "ended", "scheduled", "pending_approval"}
 SAFE_LINK = re.compile(r"^/(?![/\\])|^https://")
+# Ad pictures: a browser-shrunk upload (data URL) or an https link (Cloudinary/R2 later). ~600 KB cap keeps the DB small.
+SAFE_IMAGE = re.compile(r"^(data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+|https://\S+)$")
+MAX_IMAGE_CHARS = 800_000
 
 
 def ad_list():
-    return [a.data for a in Ad.objects.all()]
+    return [a.data for a in Ad.objects.exclude(status="deleted")]
 
 
 @admin_api("GET")
@@ -470,9 +473,25 @@ def ads_create(request):
     return save_ad(request, None)
 
 
-@admin_api("PATCH")
+@admin_api("PATCH", "DELETE")
 def ad_detail(request, pk):
+    if request.method == "DELETE":
+        return delete_ad(request, pk)
     return save_ad(request, pk)
+
+
+def delete_ad(request, pk):
+    """Ads with no billing are removed for good. Ads that already earned money are archived (status "deleted",
+    hidden everywhere) so revenue reports, GST and seller settlements stay correct."""
+    with atomic():
+        row = get_or_404(Ad.objects.select_for_update().filter(pk=pk).exclude(status="deleted"), "Ad not found.")
+        name = row.data.get("advertiser")
+        if (row.data.get("spend") or 0) > 0 or row.data.get("settlementId"):
+            row.update(status="deleted", deletedAt=now_iso())
+        else:
+            row.delete()
+        audit("ad.deleted", f"Ad #{pk}", name, actor(request))
+    return ad_list()
 
 
 def save_ad(request, pk):
@@ -492,19 +511,23 @@ def save_ad(request, pk):
         raise ApiError("Choose the start and end dates.")
     if str(ad["endsAt"]) < str(ad["startsAt"]):
         raise ApiError("End date must be after the start date.")
+    image = str(ad.get("imageUrl") or "").strip()
+    if image and (len(image) > MAX_IMAGE_CHARS or not SAFE_IMAGE.match(image)):
+        raise ApiError("Ad image must be a JPG, PNG or WebP picture under 600 KB.")
     if ad.get("advertiserType") == "seller" and not Store.objects.filter(slug=ad.get("storeSlug")).exists():
         raise ApiError("Choose the advertising store.")
     # Whitelisted fields only — stats (impressions, clicks, spend) and settlement links can't be set from the form.
     clean = {k: ad[k] for k in AD_FIELDS if ad.get(k) is not None}
     if ad.get("productId"):
         clean["productId"] = int(_number(ad["productId"]))
+    clean["imageUrl"] = image or None
     clean["rate"] = _number(ad.get("rate"), 0)
     clean["priority"] = _number(ad.get("priority"), 0)
     today = now_iso()[:10]
     clean["status"] = "paused" if ad.get("status") == "paused" else "scheduled" if clean["startsAt"] > today else "active"
     with atomic():
         if pk:
-            row = get_or_404(Ad.objects.select_for_update().filter(pk=pk), "Ad not found.")
+            row = get_or_404(Ad.objects.select_for_update().filter(pk=pk).exclude(status="deleted"), "Ad not found.")
             row.update(**clean)
         else:
             Ad.create({**clean, "clicks": 0, "impressions": 0, "spend": clean["rate"] if clean.get("pricing") == "fixed" else 0})
@@ -519,7 +542,7 @@ def ad_status(request, pk):
     if status not in AD_STATUSES:
         raise ApiError("Unknown status.")
     with atomic():
-        row = get_or_404(Ad.objects.select_for_update().filter(pk=pk), "Ad not found.")
+        row = get_or_404(Ad.objects.select_for_update().filter(pk=pk).exclude(status="deleted"), "Ad not found.")
         row.update(status=status)
         audit(f"ad.{status}", f"Ad #{pk}", row.data.get("advertiser"), actor(request))
     return row.data

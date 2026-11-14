@@ -5,6 +5,7 @@ export * from "./cn";
 export * from "./format";
 export * from "./getErrorMessage";
 export * from "./gst";
+export * from "./image";
 export * from "./mock";
 export * from "./pricing";
 export * from "./storage";

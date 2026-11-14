@@ -393,7 +393,7 @@ export async function getStoreLedger(storeSlug) {
 // ---------- Ads ----------
 export async function getAdManager() {
   if (!IS_MOCK) return get(API.ADMIN_AD_MANAGER);
-  return run(() => ({ ads: getDb().ads, slots: getDb().adSlots }));
+  return run(() => ({ ads: getDb().ads.filter((a) => a.status !== "deleted"), slots: getDb().adSlots }));
 }
 
 export async function saveAd(ad) {
@@ -406,9 +406,10 @@ export async function saveAd(ad) {
     if (slot.format !== "sponsored_products" && !ad.headline?.trim()) throw apiError("Banner and carousel ads need a headline.");
     if (ad.link && !/^\/(?![/\\])|^https:\/\//.test(ad.link)) throw apiError("Link must be an internal path (/...) or an https:// URL.");
     if (ad.endsAt < ad.startsAt) throw apiError("End date must be after the start date.");
+    if (ad.imageUrl && !/^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/.test(ad.imageUrl)) throw apiError("Ad image must be a JPG, PNG or WebP picture.");
     // Whitelisted fields only — stats (impressions, clicks, spend) and settlement links can't be set from the form.
-    const FIELDS = ["advertiser", "advertiserType", "cta", "endsAt", "eyebrow", "headline", "id", "link", "pricing", "slot", "startsAt", "status", "storeSlug", "subtext", "theme"];
-    const clean = { ...Object.fromEntries(FIELDS.filter((k) => ad[k] !== undefined).map((k) => [k, ad[k]])), productId: ad.productId ? Number(ad.productId) : undefined, rate: Number(ad.rate ?? 0), priority: Number(ad.priority ?? 0) };
+    const FIELDS = ["advertiser", "advertiserType", "cta", "endsAt", "eyebrow", "headline", "id", "imageUrl", "link", "pricing", "slot", "startsAt", "status", "storeSlug", "subtext", "theme"];
+    const clean = { ...Object.fromEntries(FIELDS.filter((k) => ad[k] !== undefined).map((k) => [k, ad[k]])), imageUrl: ad.imageUrl || null, productId: ad.productId ? Number(ad.productId) : undefined, rate: Number(ad.rate ?? 0), priority: Number(ad.priority ?? 0) };
     const today = nowIso().slice(0, 10);
     clean.status = ad.status === "paused" ? "paused" : clean.startsAt > today ? "scheduled" : "active";
     if (ad.id) Object.assign(db.ads.find((a) => a.id === ad.id), clean);
@@ -417,6 +418,21 @@ export async function saveAd(ad) {
     commit();
     return db.ads;
   });
+}
+
+/** Ads with billing history are archived (kept for revenue, GST and settlements); unbilled ads are removed. */
+export async function deleteAd(id) {
+  if (!IS_MOCK) return withCatalog(remote("delete", API.ADMIN_AD(id)));
+  return run(() => {
+    const db = getDb();
+    const ad = db.ads.find((a) => a.id === id && a.status !== "deleted");
+    if (!ad) throw apiError("Ad not found.");
+    if (ad.spend > 0 || ad.settlementId) Object.assign(ad, { deletedAt: nowIso(), status: "deleted" });
+    else db.ads.splice(db.ads.indexOf(ad), 1);
+    audit("ad.deleted", `Ad #${id}`, ad.advertiser);
+    commit();
+    return db.ads.filter((a) => a.status !== "deleted");
+  }, 150);
 }
 
 export async function setAdStatus(id, status) {

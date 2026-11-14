@@ -91,6 +91,35 @@ def test_ad_save_whitelists_fields(admin):
     assert ad["clicks"] == 0 and ad["spend"] == 0 and ad["status"] == "active"
 
 
+def test_ad_image_upload_rules(admin):
+    base = {"advertiser": "Kartiva", "advertiserType": "house", "endsAt": "2026-12-31", "headline": "Poster", "link": "/", "pricing": "free",
+            "slot": "home_strip_top", "startsAt": "2026-11-01"}
+    ok = admin.post(f"{BASE}/ads/", {**base, "imageUrl": "data:image/webp;base64,UklGRg=="}, format="json")
+    assert ok.status_code == 200
+    ad = next(a for a in ok.json() if a.get("headline") == "Poster")
+    assert ad["imageUrl"].startswith("data:image/webp")
+    for bad in ["data:image/svg+xml;base64,PHN2Zz4=", "javascript:alert(1)", "http://x.example/a.png", "data:image/png;base64," + "A" * 900_000]:
+        assert admin.post(f"{BASE}/ads/", {**base, "imageUrl": bad}, format="json").status_code == 400
+    cleared = admin.patch(f"{BASE}/ads/{ad['id']}/", {**ad, "imageUrl": ""}, format="json")
+    assert next(a for a in cleared.json() if a["id"] == ad["id"])["imageUrl"] is None
+
+
+def test_ad_delete_removes_unbilled_and_archives_billed(admin, as_user):
+    from apps.marketing.models import Ad
+    fresh = Ad.create({"advertiser": "Kartiva", "advertiserType": "house", "slot": "home_strip_top", "status": "active", "spend": 0, "clicks": 0, "impressions": 0})
+    billed = Ad.objects.filter(store_slug__isnull=False).exclude(store_slug="").first() or Ad.objects.exclude(pk=fresh.pk).first()
+    billed.update(spend=500)
+    assert admin.delete(f"{BASE}/ads/{fresh.pk}/").status_code == 200
+    assert not Ad.objects.filter(pk=fresh.pk).exists()  # nothing billed → gone
+    res = admin.delete(f"{BASE}/ads/{billed.pk}/")
+    assert res.status_code == 200 and all(a["id"] != billed.pk for a in res.json())
+    billed.refresh_from_db()
+    assert billed.data["status"] == "deleted" and billed.data["spend"] == 500  # billed → archived, money kept
+    assert admin.delete(f"{BASE}/ads/{billed.pk}/").status_code == 404
+    assert admin.post(f"{BASE}/ads/{billed.pk}/status/", {"status": "active"}, format="json").status_code == 404
+    assert as_user("seller@kartiva.demo").delete(f"{BASE}/ads/{fresh.pk + 1}/").status_code == 403
+
+
 def test_kyc_verify_flips_status_and_notifies_seller(admin, as_user):
     slug = "technest"
     KycDocument.objects.filter(store_slug=slug).delete()
