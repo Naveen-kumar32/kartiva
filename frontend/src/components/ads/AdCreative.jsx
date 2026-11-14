@@ -12,7 +12,8 @@ const isPaid = (ad) => ad.advertiserType !== "house";
 // Renders an ad from structured fields (eyebrow, headline, subtext, cta, theme, product image).
 // layout: "hero" | "wide" | "tall" | "compact"
 export function AdCreative({ ad, layout = "wide" }) {
-  const image = ad.imageUrl ?? ad.product?.images?.[0] ?? ad.product?.thumbnail;
+  const photo = Boolean(ad.imageUrl); // admin-uploaded banner/photo vs. a product cut-out
+  const image = ad.imageUrl || ad.product?.images?.[0] || ad.product?.thumbnail;
   const hero = layout === "hero";
   const tall = layout === "tall";
   return (
@@ -43,7 +44,24 @@ export function AdCreative({ ad, layout = "wide" }) {
         )}
       </div>
 
-      {image && (
+      {photo && (
+        // Uploaded banner/photo: fills its side of the ad edge to edge and fades into the theme colour.
+        <div aria-hidden className={cn("pointer-events-none", tall ? "relative mt-auto h-48 w-full" : hero ? "absolute inset-0 sm:left-auto sm:w-1/2" : "absolute inset-y-0 right-0 w-1/2")}>
+          <SmartImage
+            alt=""
+            className={cn(
+              "size-full object-cover object-[50%_25%] transition duration-700 group-hover:scale-105",
+              tall ? "[mask-image:linear-gradient(to_bottom,transparent,black_35%)]" : "[mask-image:linear-gradient(to_right,transparent,black_45%)]",
+              hero && "max-sm:[mask-image:none]",
+            )}
+            src={image}
+          />
+          {/* mobile hero: the photo sits behind the text, so darken it for readability */}
+          {hero && <span className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10 sm:hidden" />}
+        </div>
+      )}
+
+      {image && !photo && (
         <div className={cn("relative z-0 flex items-center justify-center", tall ? "mt-auto h-40 p-4" : hero ? "absolute bottom-0 right-0 top-0 hidden w-2/5 sm:flex" : "w-1/3 p-3")}>
           <span aria-hidden className={cn("absolute rounded-full bg-white/20", hero ? "size-64 lg:size-80" : "size-28 sm:size-36")} />
           <SmartImage alt="" className={cn("relative object-contain drop-shadow-2xl transition duration-500 group-hover:scale-105", hero ? "max-h-[85%] max-w-[85%]" : "max-h-32 sm:max-h-40")} src={image} />
