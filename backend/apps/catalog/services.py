@@ -116,7 +116,7 @@ def build_reviews(product, count=6):
     """Deterministic sample reviews (same as src/data/reviews.js) for products that have no stored reviews."""
     out = []
     pid = product.get("id") or 0
-    for i in range(count):
+    for i in range(min(count, product.get("reviewCount") or 0)):  # never more sample reviews than the product's rating count
         seed = (pid * 7 + i * 13) % 97
         rating, title, body = TEXTS[seed % len(TEXTS)]
         day = 1 + ((pid + i * 5) % 28)

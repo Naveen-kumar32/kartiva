@@ -12,7 +12,8 @@ const TEXTS = [
 ];
 
 export function buildReviews(product, count = 6) {
-  return Array.from({ length: count }, (_, i) => {
+  // Never more sample reviews than the product's rating count (new products have none).
+  return Array.from({ length: Math.min(count, product.reviewCount || 0) }, (_, i) => {
     const seed = (product.id * 7 + i * 13) % 97;
     const [rating, title, body] = TEXTS[seed % TEXTS.length];
     const day = 1 + ((product.id + i * 5) % 28);

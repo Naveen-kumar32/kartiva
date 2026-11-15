@@ -6,6 +6,8 @@ import { formatDate } from "@/utils/format";
 import { Rating, Stars } from "../ui";
 
 export function ReviewList({ rating, reviewCount, reviews }) {
+  if (!reviewCount && !reviews.length) return <p className="text-sm text-muted">{EN.PRODUCT.NO_RATINGS}</p>;
+
   // Approximate distribution for the demo summary bars.
   const dist = [5, 4, 3, 2, 1].map((star) => {
     const weight = Math.max(0.02, 1 - Math.abs(star - rating) / 2.5);
