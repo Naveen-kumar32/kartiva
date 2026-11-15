@@ -406,7 +406,7 @@ def analytics(request):
 
 # ---------- Business profile & KYC ----------
 KYC_REQUIRED = ["gst_certificate", "pan_card", "cancelled_cheque"]
-KYC_OPTIONAL = ["address_proof", "trade_licence", "fssai_bis_licence"]
+KYC_OPTIONAL = ["shop_establishment", "udyam_certificate", "trade_licence", "owner_photo", "address_proof", "fssai_bis_licence"]
 KYC_MAX_KB = 5 * 1024
 BUSINESS_TYPES = ["Manufacturer", "Manufacturer & Exporter", "Wholesaler", "Distributor", "Brand", "Authorised Dealer", "Authorised Retailer", "Retailer", "Service Provider"]
 TURNOVER_BANDS = ["Up to ₹1 Cr", "₹1–5 Cr", "₹5–10 Cr", "₹10–25 Cr", "₹25–50 Cr", "₹50 Cr+"]

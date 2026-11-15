@@ -15,8 +15,11 @@ export function formatCompactInr(value) {
   return formatCurrency(v);
 }
 
-export const formatDate = (iso, opts = { day: "numeric", month: "short", year: "numeric" }) =>
-  new Intl.DateTimeFormat("en-IN", { ...opts, timeZone: "Asia/Kolkata" }).format(new Date(iso));
+// A missing or malformed date shows "—" instead of crashing the whole page.
+export const formatDate = (iso, opts = { day: "numeric", month: "short", year: "numeric" }) => {
+  const date = new Date(iso);
+  return iso == null || Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("en-IN", { ...opts, timeZone: "Asia/Kolkata" }).format(date);
+};
 
 export const formatDateTime = (iso) =>
   formatDate(iso, { day: "numeric", hour: "numeric", minute: "2-digit", month: "short" });

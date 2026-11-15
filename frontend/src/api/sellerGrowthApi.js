@@ -403,7 +403,7 @@ export async function getSellerAnalytics(storeSlug, days = 30) {
 }
 
 // ---------- Business profile & KYC ----------
-export const KYC_DOC_TYPES = { optional: ["address_proof", "trade_licence", "fssai_bis_licence"], required: ["gst_certificate", "pan_card", "cancelled_cheque"] };
+export const KYC_DOC_TYPES = { optional: ["shop_establishment", "udyam_certificate", "trade_licence", "owner_photo", "address_proof", "fssai_bis_licence"], required: ["gst_certificate", "pan_card", "cancelled_cheque"] };
 const KYC_MAX_KB = 5 * 1024;
 // Multipart body for the KYC upload: the File itself when the page passes one, else just its metadata.
 const kycForm = (docType, file) => {

@@ -1,4 +1,4 @@
-import { Check, Download, Eye, ExternalLink, FileText, FolderDown, Landmark, SearchCheck, ShieldCheck, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Download, Eye, ExternalLink, FileText, FolderDown, Landmark, SearchCheck, ShieldCheck, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getKycFile, getKycQueue, getKycZip, reviewKycDocument, setTrustedBadge, verifyStoreGstin } from "@/api";
@@ -43,7 +43,7 @@ export function AdminVerification() {
   const [busy, setBusy] = useState(null);
   const [checks, setChecks] = useState({});
   const [expanded, setExpanded] = useState({});
-  const [viewing, setViewing] = useState(null); // { doc, store }
+  const [viewing, setViewing] = useState(null); // { slug, docId } — the document open in the viewer
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -134,18 +134,16 @@ export function AdminVerification() {
                       <td className="px-5 py-2.5">
                         <span className="flex items-center gap-1.5"><FileText aria-hidden className="size-4 text-muted" /><span className="max-w-52 truncate font-mono text-xs">{d.fileName}</span></span>
                         <span className="text-xs text-muted">{P.SIZE_KB(formatNumber(d.sizeKb))}</span>
-                        {hasFile(d) ? (
-                          <span className="mt-1 flex gap-1">
-                            <Button onClick={() => setViewing({ doc: d, store })} size="sm" variant="ghost"><Eye className="size-4" />{P.VIEW_FILE}</Button>
-                            <Button loading={busy === `d-${d.id}`} onClick={() => downloadDoc(d)} size="sm" variant="ghost"><Download className="size-4" />{P.DOWNLOAD}</Button>
-                          </span>
-                        ) : <span className="mt-1 block text-[11px] text-muted">{P.NO_FILE}</span>}
+                        {hasFile(d)
+                          ? <button className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline" onClick={() => downloadDoc(d)} type="button"><Download className="size-3.5" />{P.DOWNLOAD}</button>
+                          : <span className="mt-1 block text-[11px] text-muted">{P.NO_FILE}</span>}
                       </td>
                       <td className="whitespace-nowrap px-5 py-2.5 text-xs" title={formatDateTime(d.uploadedAt)}>{formatDate(d.uploadedAt)}<span className="block text-muted">{timeAgo(d.uploadedAt)}</span></td>
                       <td className="px-5 py-2.5"><Pill tone={DOC_TONE[d.status]}>{P.DOC_STATUS[d.status] ?? d.status}</Pill></td>
                       <td className="max-w-60 px-5 py-2.5 text-xs text-muted">{d.reviewedBy ? `${d.reviewedBy} · ${formatDate(d.reviewedAt)}` : "—"}{d.note && <span className="block text-red-700">{d.note}</span>}</td>
                       <td className="px-5 py-2.5">
                         <span className="flex justify-end gap-1">
+                          {hasFile(d) && <Button onClick={() => setViewing({ docId: d.id, slug: store.slug })} size="sm" variant="outline"><Eye className="size-4" />{P.VIEW_FILE}</Button>}
                           {d.status !== "verified" && <Button loading={busy === `v-${d.id}`} onClick={() => act(`v-${d.id}`, () => reviewKycDocument(d.id, "verified", "", actor), (s) => P.DOC_VERIFIED(P.DOC_TYPE[d.type] ?? d.type, P.KYC[s.kycStatus] ?? s.kycStatus))} size="sm"><Check className="size-4" />{P.VERIFY}</Button>}
                           {d.status !== "rejected" && <Button onClick={() => setRejecting({ doc: d, store })} size="sm" variant="outline"><X className="size-4" />{P.REJECT}</Button>}
                         </span>
@@ -159,7 +157,31 @@ export function AdminVerification() {
         </Panel>
       ))}
 
-      {viewing && <DocViewer doc={viewing.doc} onClose={() => setViewing(null)} onDownload={() => downloadDoc(viewing.doc)} store={viewing.store} />}
+      {viewing && (() => {
+        const entry = data.find((r) => r.store.slug === viewing.slug);
+        const list = entry?.docs.filter(hasFile) ?? [];
+        const i = list.findIndex((x) => x.id === viewing.docId);
+        if (i < 0) return null;
+        const doc = list[i];
+        const go = (j) => setViewing({ docId: list[j].id, slug: viewing.slug });
+        return (
+          <DocViewer
+            busy={busy === `v-${doc.id}`}
+            doc={doc}
+            onClose={() => setViewing(null)}
+            onDownload={() => downloadDoc(doc)}
+            onNext={i < list.length - 1 ? () => go(i + 1) : null}
+            onPrev={i > 0 ? () => go(i - 1) : null}
+            onReject={() => { setViewing(null); setRejecting({ doc, store: entry.store }); }}
+            onVerify={async () => {
+              const ok = await act(`v-${doc.id}`, () => reviewKycDocument(doc.id, "verified", "", actor), (st) => P.DOC_VERIFIED(P.DOC_TYPE[doc.type] ?? doc.type, P.KYC[st.kycStatus] ?? st.kycStatus));
+              if (ok && i < list.length - 1) go(i + 1); // straight on to the next document
+            }}
+            position={P.POSITION(i + 1, list.length)}
+            store={entry.store}
+          />
+        );
+      })()}
 
       {rejecting && (
         <PromptDialog
@@ -206,31 +228,47 @@ function GstPortalCard({ result }) {
   );
 }
 
-/** In-page preview of a seller document (PDF or image), fetched with the admin's session — never a public link. */
-function DocViewer({ doc, onClose, onDownload, store }) {
-  const [state, setState] = useState({ error: null, url: null });
+/** In-page preview of a seller document (PDF or image), fetched with the admin's session — never a public link.
+ *  The admin looks at the document here and then verifies / rejects it, or moves to the previous / next one. */
+function DocViewer({ busy, doc, onClose, onDownload, onNext, onPrev, onReject, onVerify, position, store }) {
+  const [state, setState] = useState({ error: null, url: null, id: null });
+  const docId = doc.id;
   useEffect(() => {
     let url = null;
     let alive = true;
-    getKycFile(doc)
-      .then((blob) => { url = URL.createObjectURL(blob); if (alive) setState({ error: null, url }); })
-      .catch((err) => { if (alive) setState({ error: getErrorMessage(err), url: null }); });
+    getKycFile({ ...doc, id: docId })
+      .then((blob) => { url = URL.createObjectURL(blob); if (alive) setState({ error: null, id: docId, url }); })
+      .catch((err) => { if (alive) setState({ error: getErrorMessage(err), id: docId, url: null }); });
     return () => { alive = false; if (url) URL.revokeObjectURL(url); };
-  }, [doc]);
+    // re-fetch only when a different document is opened (status changes don't need a new download)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docId]);
+  const ready = state.id === docId;
   const isPdf = doc.fileType === "application/pdf" || doc.fileName?.toLowerCase().endsWith(".pdf");
   return (
     <Modal onClose={onClose} open size="xl" title={P.VIEW_TITLE(P.DOC_TYPE[doc.type] ?? doc.type, store.name)}>
-      <div className="h-[70vh] overflow-hidden rounded-lg border border-line bg-slate-100">
-        {state.error ? <p className="p-6 text-sm text-red-700">{state.error}</p>
-          : !state.url ? <div className="grid h-full place-items-center text-sm text-muted">{EN.COMMON.LOADING}</div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="flex items-center gap-2"><Pill tone={DOC_TONE[doc.status]}>{P.DOC_STATUS[doc.status] ?? doc.status}</Pill><span className="text-muted">{position}</span></span>
+        <span className="flex gap-1">
+          <Button disabled={!onPrev} onClick={onPrev} size="sm" variant="ghost"><ChevronLeft className="size-4" />{P.PREV_DOC}</Button>
+          <Button disabled={!onNext} onClick={onNext} size="sm" variant="ghost">{P.NEXT_DOC}<ChevronRight className="size-4" /></Button>
+        </span>
+      </div>
+      <div className="h-[62vh] overflow-hidden rounded-lg border border-line bg-slate-100">
+        {!ready ? <div className="grid h-full place-items-center text-sm text-muted">{EN.COMMON.LOADING}</div>
+          : state.error ? <p className="p-6 text-sm text-red-700">{state.error}</p>
             : isPdf ? <iframe className="size-full" src={state.url} title={doc.fileName} />
               : <img alt={doc.fileName} className="size-full object-contain" src={state.url} />}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-xs text-muted">{doc.fileName} · {P.SIZE_KB(formatNumber(doc.sizeKb))}</p>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-xs text-muted">{doc.fileName} · {P.SIZE_KB(formatNumber(doc.sizeKb))}</span>
+          {ready && state.url && isPdf && <Button as="a" href={state.url} rel="noopener" size="sm" target="_blank" variant="ghost"><ExternalLink className="size-4" />{P.OPEN_NEW_TAB}</Button>}
+          <Button onClick={onDownload} size="sm" variant="ghost"><Download className="size-4" />{P.DOWNLOAD}</Button>
+        </span>
         <span className="flex gap-2">
-          {state.url && isPdf && <Button as="a" href={state.url} rel="noopener" size="sm" target="_blank" variant="outline"><ExternalLink className="size-4" />{P.OPEN_NEW_TAB}</Button>}
-          <Button onClick={onDownload} size="sm"><Download className="size-4" />{P.DOWNLOAD}</Button>
+          {doc.status !== "rejected" && <Button onClick={onReject} size="sm" variant="outline"><X className="size-4" />{P.REJECT}</Button>}
+          {doc.status !== "verified" && <Button loading={busy} onClick={onVerify} size="sm"><Check className="size-4" />{P.VERIFY}</Button>}
         </span>
       </div>
     </Modal>

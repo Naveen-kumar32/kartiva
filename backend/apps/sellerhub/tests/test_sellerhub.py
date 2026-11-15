@@ -203,8 +203,8 @@ def test_kyc_file_is_stored_and_only_admins_can_open_it(seller_a, as_user, anon)
 def test_seeded_sample_kyc_files_for_naveen(demo, as_user):
     from apps.core.models import StoredFile
     docs = list(KycDocument.objects.filter(store_slug="naveen-prints"))
-    assert len(docs) == 4 and all(d.data["status"] == "pending" and d.data.get("fileId") for d in docs)
-    assert StoredFile.objects.filter(owner="naveen-prints").count() == 4
+    assert len(docs) == 8 and all(d.data["status"] == "pending" and d.data.get("fileId") for d in docs)
+    assert StoredFile.objects.filter(owner="naveen-prints").count() == 8
     assert Store.objects.get(slug="naveen-prints").data["kycStatus"] == "pending"
     admin = as_user("admin@kartiva.demo")
     pan = next(d for d in docs if d.data["type"] == "pan_card")

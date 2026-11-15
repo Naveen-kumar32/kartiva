@@ -11,7 +11,7 @@ export function useActor() {
 }
 
 export function timeAgo(iso) {
-  if (!iso) return "—";
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return "—";
   const mins = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60_000);
   if (mins < 60) return AGO.AGE_M(Math.max(1, Math.round(mins)));
   if (mins < 60 * 48) return AGO.AGE_H(Math.round(mins / 60));
