@@ -168,7 +168,7 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
   const formik = useFormik({
     initialValues: {
       advertiser: ad.advertiser ?? "Kartiva", advertiserType: ad.advertiserType ?? "house", budget: ad.budget ?? "", cta: ad.cta ?? "Shop now", endsAt: ad.endsAt ?? plusDays(14),
-      eyebrow: ad.eyebrow ?? "", headline: ad.headline ?? "", imageUrl: ad.imageUrl ?? "", link: ad.link ?? "/", pricing: ad.pricing ?? "free", priority: ad.priority ?? 0, productId: ad.productId ?? "",
+      eyebrow: ad.eyebrow ?? "", headline: ad.headline ?? "", imageFit: ad.imageFit ?? "auto", imageUrl: ad.imageUrl ?? "", link: ad.link ?? "/", pricing: ad.pricing ?? "free", priority: ad.priority ?? 0, productId: ad.productId ?? "",
       rate: ad.rate ?? 0, slot: ad.slot ?? "home_hero_carousel", startsAt: ad.startsAt ?? today(), status: ad.status, storeSlug: ad.storeSlug ?? "", subtext: ad.subtext ?? "", theme: ad.theme ?? THEMES[0][1],
     },
     onSubmit: async (values) => {
@@ -186,6 +186,7 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
   const sponsored = slot?.format === "sponsored_products";
   const products = PRODUCTS.filter((p) => p.status === "active" && !p.deletedAt && (values.advertiserType !== "seller" || !values.storeSlug || p.storeSlug === values.storeSlug));
   const previewProduct = PRODUCTS.find((p) => p.id === Number(values.productId));
+  const [imageLink, setImageLink] = useState("");
   const onImage = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -221,8 +222,15 @@ function AdEditor({ ad, onClose, onSaved, slots }) {
                 </label>
                 {values.imageUrl && <Button onClick={() => setFieldValue("imageUrl", "")} size="sm" variant="ghost">{T.AD_IMAGE_REMOVE}</Button>}
               </div>
+              {!values.imageUrl && (
+                <div className="mt-2 flex gap-2">
+                  <input aria-label={T.AD_IMAGE_LINK} className="h-10 flex-1 rounded-lg border border-line px-3 text-sm" onChange={(e) => setImageLink(e.target.value)} placeholder={T.AD_IMAGE_LINK} value={imageLink} />
+                  <Button disabled={!/^https:\/\/\S+$/.test(imageLink.trim())} onClick={() => { setFieldValue("imageUrl", imageLink.trim()); setImageLink(""); }} size="md" variant="outline">{T.AD_IMAGE_USE_LINK}</Button>
+                </div>
+              )}
               <p className="mt-1 text-xs text-muted">{T.AD_IMAGE_HINT}</p>
             </div>
+            <FormSelect label={T.AD_IMAGE_STYLE} name="imageFit" onChange={handleChange} options={[{ label: T.AD_IMAGE_STYLE_AUTO, value: "auto" }, { label: T.AD_IMAGE_STYLE_PHOTO, value: "photo" }, { label: T.AD_IMAGE_STYLE_CUTOUT, value: "cutout" }]} value={values.imageFit} />
             {f("link", T.LINK, { hint: T.LINK_HINT })}
             <FormSelect label={T.THEME} name="theme" onChange={handleChange} options={THEMES.map(([label, value]) => ({ label, value }))} value={values.theme} />
           </div>

@@ -16,6 +16,7 @@ export const DEMO_USERS = [
   { id: 15, email: "spiceroute@kartiva.demo", password: "Demo@123", firstName: "Anil", lastName: "Varghese", phone: "+919847022110", role: "seller", storeSlug: "spice-route" },
   { id: 16, email: "glowup@kartiva.demo", password: "Demo@123", firstName: "Sana", lastName: "Mirza", phone: "+919849099090", role: "seller", storeSlug: "glowup" },
   { id: 17, email: "fitzone@kartiva.demo", password: "Demo@123", firstName: "Nikhil", lastName: "Deshpande", phone: "+919822055660", role: "seller", storeSlug: "fitzone" },
+  { id: 18, email: "naveen@kartiva.demo", password: "Demo@123", firstName: "Naveen", lastName: "Kumar", phone: "+919800000018", role: "seller", storeSlug: "naveen-prints" },
   { id: 3, email: "admin@kartiva.demo", password: "Demo@123", firstName: "Kavya", lastName: "Iyer", phone: "+919800000001", role: "admin" },
 ];
 

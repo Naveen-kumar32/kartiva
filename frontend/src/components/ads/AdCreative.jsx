@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useImageKind } from "@/hooks";
 import { EN } from "@/locales";
 import { cn } from "@/utils/cn";
 
@@ -12,8 +13,14 @@ const isPaid = (ad) => ad.advertiserType !== "house";
 // Renders an ad from structured fields (eyebrow, headline, subtext, cta, theme, product image).
 // layout: "hero" | "wide" | "tall" | "compact"
 export function AdCreative({ ad, layout = "wide" }) {
-  const photo = Boolean(ad.imageUrl); // admin-uploaded banner/photo vs. a product cut-out
   const image = ad.imageUrl || ad.product?.images?.[0] || ad.product?.thumbnail;
+  // imageFit: "photo" = fill edge to edge, "cutout" = product on the circle, "auto"/unset = look at the picture.
+  const forced = ad.imageFit === "photo" || ad.imageFit === "cutout" ? ad.imageFit : null;
+  const detected = useImageKind(image, Boolean(image) && !forced);
+  // Own image → full photo unless it's clearly a cut-out; product image → cut-out unless it's clearly a photo.
+  const fallback = ad.imageUrl ? "photo" : "cutout";
+  const kind = forced ?? (detected === "unknown" ? fallback : detected) ?? (ad.imageUrl ? "photo" : null);
+  const photo = kind === "photo";
   const hero = layout === "hero";
   const tall = layout === "tall";
   return (
@@ -45,23 +52,31 @@ export function AdCreative({ ad, layout = "wide" }) {
       </div>
 
       {photo && (
-        // Uploaded banner/photo: fills its side of the ad edge to edge and fades into the theme colour.
-        <div aria-hidden className={cn("pointer-events-none", tall ? "relative mt-auto h-48 w-full" : hero ? "absolute inset-0 sm:left-auto sm:w-1/2" : "absolute inset-y-0 right-0 w-1/2")}>
+        // Full photo: the WHOLE picture is shown (never cropped); a blurred copy of it fills the spare space
+        // and fades into the theme colour, so any shape (tall, square, wide) looks intentional.
+        <div aria-hidden className={cn("pointer-events-none overflow-hidden", tall ? "relative mt-auto h-48 w-full" : hero ? "absolute inset-0 sm:left-auto sm:w-1/2" : "absolute inset-y-0 right-0 w-1/2")}>
+          {/* the fade lives on an unscaled wrapper, so it starts exactly at the edge (no visible seam) */}
+          <span className={cn(
+            "absolute inset-0 overflow-hidden",
+            tall ? "[mask-image:linear-gradient(to_bottom,transparent,black_40%)]" : "[mask-image:linear-gradient(to_right,transparent,black_60%)]",
+            hero && "max-sm:[mask-image:none]",
+          )}>
+            <SmartImage alt="" className="size-full scale-125 object-cover opacity-70 blur-2xl" src={image} />
+          </span>
           <SmartImage
             alt=""
             className={cn(
-              "size-full object-cover object-[50%_25%] transition duration-700 group-hover:scale-105",
-              tall ? "[mask-image:linear-gradient(to_bottom,transparent,black_35%)]" : "[mask-image:linear-gradient(to_right,transparent,black_45%)]",
-              hero && "max-sm:[mask-image:none]",
+              "relative size-full object-contain drop-shadow-2xl transition duration-700 group-hover:scale-[1.03]",
+              tall ? "p-2" : hero ? "object-right py-3 pr-3 sm:object-center sm:p-4" : "object-right py-2 pr-2",
             )}
             src={image}
           />
-          {/* mobile hero: the photo sits behind the text, so darken it for readability */}
-          {hero && <span className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10 sm:hidden" />}
+          {/* mobile hero: the photo sits behind the text, so darken the left side for readability */}
+          {hero && <span className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent sm:hidden" />}
         </div>
       )}
 
-      {image && !photo && (
+      {image && kind === "cutout" && (
         <div className={cn("relative z-0 flex items-center justify-center", tall ? "mt-auto h-40 p-4" : hero ? "absolute bottom-0 right-0 top-0 hidden w-2/5 sm:flex" : "w-1/3 p-3")}>
           <span aria-hidden className={cn("absolute rounded-full bg-white/20", hero ? "size-64 lg:size-80" : "size-28 sm:size-36")} />
           <SmartImage alt="" className={cn("relative object-contain drop-shadow-2xl transition duration-500 group-hover:scale-105", hero ? "max-h-[85%] max-w-[85%]" : "max-h-32 sm:max-h-40")} src={image} />

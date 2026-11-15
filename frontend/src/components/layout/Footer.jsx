@@ -1,4 +1,4 @@
-import { Mail, ShieldCheck } from "lucide-react";
+import { MapPin, Mail, Navigation, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -57,13 +57,17 @@ export function Footer() {
               <div className="mt-6">
                 <h2 className="mb-3 text-sm font-bold text-white">{T.STAY_CONNECTED}</h2>
                 <ul className="flex flex-wrap gap-2">
-                  {SOCIAL.map(([name, d]) => (
-                    <li key={name}>
-                      <a aria-label={`${name} — ${T.SHARE_SOON}`} className="grid size-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" href="#top" onClick={(e) => e.preventDefault()} title={T.SHARE_SOON}>
-                        <svg aria-hidden className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d={d} /></svg>
-                      </a>
-                    </li>
-                  ))}
+                  {SOCIAL.map(([name, d]) => {
+                    const href = name === "YouTube" ? PLATFORM.youtubeUrl : null;
+                    const icon = <svg aria-hidden className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d={d} /></svg>;
+                    return (
+                      <li key={name}>
+                        {href
+                          ? <a aria-label={name} className="grid size-9 place-items-center rounded-full bg-white/10 text-white hover:bg-[#ff0000]" href={href} rel="noopener noreferrer" target="_blank" title={T.WATCH_YOUTUBE}>{icon}</a>
+                          : <a aria-label={`${name} — ${T.SHARE_SOON}`} className="grid size-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" href="#top" onClick={(e) => e.preventDefault()} title={T.SHARE_SOON}>{icon}</a>}
+                      </li>
+                    );
+                  })}
                 </ul>
                 <p className="mt-3 text-xs text-white/50">{T.APP_SOON}</p>
               </div>
@@ -71,6 +75,8 @@ export function Footer() {
           </nav>
         ))}
       </div>
+
+      <FindUs />
 
       <div className="border-t border-white/10">
         <div className="mx-auto grid max-w-[1440px] gap-4 px-4 py-6 text-xs text-white/60 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
@@ -108,5 +114,40 @@ function Newsletter() {
         <button className="h-10 rounded-lg bg-accent-500 px-4 text-sm font-semibold text-ink hover:bg-accent-400" type="submit">{T.NEWSLETTER_CTA}</button>
       </div>
     </form>
+  );
+}
+
+// "Visit us": address + Google map + YouTube, all from Admin → Settings (mapLocation falls back to the address).
+function FindUs() {
+  const place = PLATFORM.mapLocation || PLATFORM.address;
+  if (!place) return null;
+  const q = encodeURIComponent(place);
+  return (
+    <div className="border-t border-white/10">
+      <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:items-center lg:px-8">
+        <div>
+          <h2 className="mb-3 text-sm font-bold text-white">{T.FIND_US}</h2>
+          <p className="flex gap-2 text-sm"><MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-accent-400" />{PLATFORM.address}</p>
+          <p className="mt-2 text-sm">{PLATFORM.supportPhone} · {PLATFORM.supportEmail}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a className="inline-flex items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-brand-900 hover:bg-accent-400" href={`https://www.google.com/maps/search/?api=1&query=${q}`} rel="noopener noreferrer" target="_blank">
+              <Navigation aria-hidden className="size-4" />{T.DIRECTIONS}
+            </a>
+            {PLATFORM.youtubeUrl && (
+              <a className="inline-flex items-center gap-2 rounded-lg bg-[#ff0000] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#cc0000]" href={PLATFORM.youtubeUrl} rel="noopener noreferrer" target="_blank">
+                <svg aria-hidden className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d={SOCIAL.find(([n]) => n === "YouTube")[1]} /></svg>{T.WATCH_YOUTUBE}
+              </a>
+            )}
+          </div>
+        </div>
+        <iframe
+          className="h-56 w-full rounded-xl border-0 bg-white/10 sm:h-64"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          src={`https://maps.google.com/maps?q=${q}&z=15&output=embed`}
+          title={T.MAP_TITLE(place)}
+        />
+      </div>
+    </div>
   );
 }

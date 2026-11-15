@@ -59,7 +59,9 @@ export function buildSeed() {
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
   const storeBySlug = Object.fromEntries(STORES.map((s) => [s.slug, s]));
   const byStore = {};
-  PRODUCTS.filter((p) => !p.enquiryOnly).forEach((p) => (byStore[p.storeSlug] ??= []).push(p));
+  // Shops added after this history was written (noSampleOrders) start with a clean slate — no invented orders.
+  const noHistory = new Set(STORES.filter((s) => s.noSampleOrders).map((s) => s.slug));
+  PRODUCTS.filter((p) => !p.enquiryOnly && !noHistory.has(p.storeSlug)).forEach((p) => (byStore[p.storeSlug] ??= []).push(p));
   // TechNest (the main demo seller) gets extra orders so its hub is busy. Enquiry-only dealers get leads, not orders.
   const storeWeights = STORES.filter((s) => byStore[s.slug]).flatMap((s) => Array(s.slug === "technest" ? 4 : 2).fill(s.slug));
 

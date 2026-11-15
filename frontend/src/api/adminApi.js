@@ -408,7 +408,7 @@ export async function saveAd(ad) {
     if (ad.endsAt < ad.startsAt) throw apiError("End date must be after the start date.");
     if (ad.imageUrl && !/^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/.test(ad.imageUrl)) throw apiError("Ad image must be a JPG, PNG or WebP picture.");
     // Whitelisted fields only — stats (impressions, clicks, spend) and settlement links can't be set from the form.
-    const FIELDS = ["advertiser", "advertiserType", "cta", "endsAt", "eyebrow", "headline", "id", "imageUrl", "link", "pricing", "slot", "startsAt", "status", "storeSlug", "subtext", "theme"];
+    const FIELDS = ["advertiser", "advertiserType", "cta", "endsAt", "eyebrow", "headline", "id", "imageFit", "imageUrl", "link", "pricing", "slot", "startsAt", "status", "storeSlug", "subtext", "theme"];
     const clean = { ...Object.fromEntries(FIELDS.filter((k) => ad[k] !== undefined).map((k) => [k, ad[k]])), imageUrl: ad.imageUrl || null, productId: ad.productId ? Number(ad.productId) : undefined, rate: Number(ad.rate ?? 0), priority: Number(ad.priority ?? 0) };
     const today = nowIso().slice(0, 10);
     clean.status = ad.status === "paused" ? "paused" : clean.startsAt > today ? "scheduled" : "active";
@@ -540,8 +540,10 @@ export async function savePlatformSettings(patch) {
   return run(() => {
     const p = getDb().platform;
     // Whitelist: only known settings keys can be written; internal keys (idempotency, homeSections …) are not editable here.
-    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "orderPaymentTimeoutMinutes", "productModerationEnabled", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website"]);
+    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website", "youtubeUrl"]);
     const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => EDITABLE.has(k)));
+    if (clean.youtubeUrl && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(clean.youtubeUrl)) throw apiError("YouTube link must start with https://www.youtube.com/ or https://youtu.be/");
+    if (clean.mapLocation != null) clean.mapLocation = String(clean.mapLocation).trim().slice(0, 200);
     const changed = Object.keys(clean).filter((k) => JSON.stringify(p[k]) !== JSON.stringify(clean[k]));
     Object.assign(p, clean);
     audit("settings.updated", "Platform settings", changed.length ? `Changed: ${changed.join(", ")}` : "No changes");

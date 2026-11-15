@@ -49,6 +49,8 @@ function SettingsForm({ initial }) {
           {field("supportPhone", A.FIELD_SUPPORT_PHONE)}
           {field("supportEmail", A.FIELD_SUPPORT_EMAIL, { type: "email" })}
           {field("address", A.FIELD_ADDRESS, { className: "sm:col-span-2" })}
+          {field("mapLocation", T.MAP_LOCATION, { hint: T.MAP_LOCATION_HINT })}
+          {field("youtubeUrl", T.YOUTUBE_URL, { hint: T.YOUTUBE_URL_HINT, type: "url" })}
         </div>
       </Panel>
       <Panel title={T.CATALOGUE_RULES}>

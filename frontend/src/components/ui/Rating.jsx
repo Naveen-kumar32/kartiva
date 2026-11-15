@@ -1,9 +1,11 @@
 import { Star } from "lucide-react";
 
+import { EN } from "@/locales";
 import { cn } from "@/utils/cn";
 
 // Compact pill: "4.3 ★" + optional count
 export function Rating({ className, count, value }) {
+  if (count === 0 || !value) return <span className={cn("inline-flex text-xs font-medium text-muted", className)}>{EN.PRODUCT.NO_RATINGS}</span>;
   const tone = value >= 4 ? "bg-emerald-600" : value >= 3 ? "bg-amber-500" : "bg-red-500";
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs", className)}>

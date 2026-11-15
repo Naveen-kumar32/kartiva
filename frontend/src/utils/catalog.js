@@ -18,6 +18,9 @@ export const findVariantById = (variantId) => {
   return null;
 };
 
+/** Enquiry-only listing with no price set (e.g. custom printing): show "Price on request" + "Get a quote". */
+export const isPriceOnRequest = (product) => Boolean(product?.enquiryOnly) && (product.variants ?? []).every((v) => !v.price);
+
 export const discountPercent = (price, mrp) => (mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0);
 
 // Card-level summary: lowest price among variants, total stock.

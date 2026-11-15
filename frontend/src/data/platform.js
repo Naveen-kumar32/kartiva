@@ -12,6 +12,7 @@ export const PLATFORM = {
   gstRateChoices: [0, 5, 18, 40],
   legalName: "Kartiva Marketplace Private Limited",
   lowStockThreshold: 3,
+  mapLocation: "OMR, Chennai, Tamil Nadu 600096", // SAMPLE — place name or address shown on the footer map
   orderPaymentTimeoutMinutes: 15,
   productModerationEnabled: true,
   supportEmail: "support@kartiva.in",
@@ -19,4 +20,5 @@ export const PLATFORM = {
   tcsRate: 0.5,
   tdsRate: 0.1,
   website: "www.kartiva.in",
+  youtubeUrl: "https://www.youtube.com/", // SAMPLE — replace with the real channel link
 };

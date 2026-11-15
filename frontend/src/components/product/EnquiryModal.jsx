@@ -7,6 +7,7 @@ import { getMyProfile, sendEnquiry } from "@/api";
 import { USER_ROLES } from "@/constants";
 import { useAsync, useAuth } from "@/hooks";
 import { EN, ROUTES } from "@/locales";
+import { isPriceOnRequest } from "@/utils/catalog";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { errorToast } from "@/utils/toast";
 import { createEnquirySchema } from "@/validators";
@@ -73,7 +74,7 @@ function EnquiryFields({ initialQty, mode, onDone, product, store, user }) {
         <FormInput {...field("phone")} autoComplete="tel-national" inputMode="numeric" label={B.PHONE} maxLength={10} />
         <FormInput {...field("city")} autoComplete="address-level2" className="sm:col-span-2" label={B.CITY} />
       </div>
-      {product?.enquiryOnly && mode !== "test_ride" && (
+      {product?.enquiryOnly && !isPriceOnRequest(product) && mode !== "test_ride" && (
         <label className="flex items-center gap-2 text-sm">
           <input checked={values.wantsTestRide} className="size-4 accent-brand-600" onChange={(e) => setFieldValue("wantsTestRide", e.target.checked)} type="checkbox" />
           {B.ALSO_TEST_RIDE}

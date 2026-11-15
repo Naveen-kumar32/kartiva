@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { EN, ROUTES } from "@/locales";
 import { addToCart } from "@/store/slices/cartSlice";
 import { maxQtyFor } from "@/utils/cart";
-import { getDefaultVariant } from "@/utils/catalog";
+import { getDefaultVariant, isPriceOnRequest } from "@/utils/catalog";
 import { cn } from "@/utils/cn";
 import { minOrderQty } from "@/utils/pricing";
 import { successToast } from "@/utils/toast";
@@ -65,8 +65,12 @@ export function ProductCard({ className, product, sponsored = false }) {
         </div>
         <h3 className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-ink group-hover:text-brand-700">{product.name}</h3>
         <Rating className="mt-1.5" count={product.reviewCount} value={product.rating} />
-        {product.enquiryOnly && <span className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted">{EN.BUYER_HUB.CHIPS.EX_SHOWROOM}</span>}
-        <PriceTag className={product.enquiryOnly ? "" : "mt-2"} discount={discount} mrp={mrp} price={hasRange ? product.summary.minPrice : price} />
+        {isPriceOnRequest(product) ? <p className="mt-2 text-base font-bold text-brand-700">{EN.PRODUCT.PRICE_ON_REQUEST}</p> : (
+          <>
+            {product.enquiryOnly && <span className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted">{EN.BUYER_HUB.CHIPS.EX_SHOWROOM}</span>}
+            <PriceTag className={product.enquiryOnly ? "" : "mt-2"} discount={discount} mrp={mrp} price={hasRange ? product.summary.minPrice : price} />
+          </>
+        )}
         <TradeChips className="mt-1.5" product={product} />
         <p className="mt-1 truncate text-xs text-muted">{EN.PRODUCT.SOLD_BY} <span className="font-medium text-ink">{product.store.name}</span></p>
         {!outOfStock && totalStock <= 3 && <p className="mt-1 text-xs font-semibold text-red-600">{EN.PRODUCT.ONLY_LEFT(totalStock)}</p>}

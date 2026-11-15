@@ -521,6 +521,7 @@ def save_ad(request, pk):
     if ad.get("productId"):
         clean["productId"] = int(_number(ad["productId"]))
     clean["imageUrl"] = image or None
+    clean["imageFit"] = ad.get("imageFit") if ad.get("imageFit") in ("photo", "cutout") else "auto"
     clean["rate"] = _number(ad.get("rate"), 0)
     clean["priority"] = _number(ad.get("priority"), 0)
     today = now_iso()[:10]
@@ -605,7 +606,9 @@ def audit_log(request):
 
 
 EDITABLE = {"address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices",
-            "legalName", "lowStockThreshold", "orderPaymentTimeoutMinutes", "productModerationEnabled", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website"}
+            "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "supportEmail", "supportPhone", "tcsRate", "tdsRate",
+            "website", "youtubeUrl"}
+YOUTUBE_LINK = re.compile(r"^https://(www\.|m\.)?(youtube\.com|youtu\.be)/\S*$")
 
 
 @admin_api("GET", "PATCH")
@@ -617,6 +620,10 @@ def settings_view(request):
         p = get_platform()
         # Whitelist: only known settings keys can be written; internal keys (idempotency, homeSections …) are not editable here.
         clean = {k: v for k, v in patch.items() if k in EDITABLE}
+        if clean.get("youtubeUrl") and not YOUTUBE_LINK.match(str(clean["youtubeUrl"])):
+            raise ApiError("YouTube link must start with https://www.youtube.com/ or https://youtu.be/")
+        if "mapLocation" in clean:
+            clean["mapLocation"] = str(clean["mapLocation"] or "").strip()[:200]
         changed = [k for k in clean if json.dumps(p.get(k), sort_keys=True) != json.dumps(clean[k], sort_keys=True)]
         p.update(clean)
         save_platform(p)

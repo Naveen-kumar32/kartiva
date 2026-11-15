@@ -13,7 +13,7 @@ import { useAsync, useDocumentTitle } from "@/hooks";
 import { EN, ROUTES } from "@/locales";
 import { addToCart } from "@/store/slices/cartSlice";
 import { maxQtyFor, nextTierFor } from "@/utils/cart";
-import { categoryTrail, discountPercent, findVariant, getDefaultVariant } from "@/utils/catalog";
+import { categoryTrail, discountPercent, findVariant, getDefaultVariant, isPriceOnRequest } from "@/utils/catalog";
 import { formatCurrency } from "@/utils/format";
 import { minOrderQty, tierFor, unitPriceFor } from "@/utils/pricing";
 import { successToast } from "@/utils/toast";
@@ -49,6 +49,7 @@ export function ProductDetail() {
   const tier = tierFor(product, quantity);
   const nextTier = nextTierFor(product, variant, quantity);
   const enquiryOnly = Boolean(product.enquiryOnly);
+  const onRequest = isPriceOnRequest(product); // custom work (printing etc.) — quote instead of a price
   const crumbs = [{ label: EN.COMMON.HOME, to: ROUTES.HOME }, ...categoryTrail(product.categorySlug).map((c) => ({ label: c.name, to: ROUTES.CATEGORY(c.slug) })), { label: product.name }];
 
   const add = (goToCart) => {
@@ -75,12 +76,16 @@ export function ProductDetail() {
           </div>
           <TradeChips className="mt-3" product={product} />
           <div className="mt-5 rounded-xl bg-white p-4 shadow-card">
-            {enquiryOnly && <p className="text-xs font-semibold uppercase tracking-wide text-muted">{B.CHIPS.EX_SHOWROOM}</p>}
-            <PriceTag discount={discountPercent(unitPrice, variant.mrp)} mrp={variant.mrp} price={unitPrice} size="lg" />
+            {onRequest ? <p className="text-2xl font-bold text-brand-700">{EN.PRODUCT.PRICE_ON_REQUEST}</p> : (
+              <>
+                {enquiryOnly && <p className="text-xs font-semibold uppercase tracking-wide text-muted">{B.CHIPS.EX_SHOWROOM}</p>}
+                <PriceTag discount={discountPercent(unitPrice, variant.mrp)} mrp={variant.mrp} price={unitPrice} size="lg" />
+              </>
+            )}
             {tier && <p className="mt-1 text-sm font-medium text-emerald-700">{B.PRICING.BULK_APPLIED(formatCurrency(unitPrice), tier.minQty, formatCurrency(variant.price))}</p>}
             {!enquiryOnly && nextTier && <p className="mt-1 text-sm text-brand-700">{B.PRICING.NUDGE(nextTier.addQty, formatCurrency(nextTier.unitPrice))}</p>}
             {moq > 1 && <p className="mt-1 text-sm text-amber-800">{B.PRICING.MOQ_NOTE(moq)}</p>}
-            <p className="mt-1 text-xs text-muted">{enquiryOnly ? B.PRICING.EX_SHOWROOM_NOTE : `${EN.PRODUCT.INCLUSIVE_TAXES} · GST ${product.gstRate}% · HSN ${product.hsnCode}`}</p>
+            <p className="mt-1 text-xs text-muted">{onRequest ? EN.PRODUCT.QUOTE_NOTE : enquiryOnly ? B.PRICING.EX_SHOWROOM_NOTE : `${EN.PRODUCT.INCLUSIVE_TAXES} · GST ${product.gstRate}% · HSN ${product.hsnCode}`}</p>
           </div>
 
           {!enquiryOnly && <BulkPricingTable className="mt-4" onPick={setQuantity} product={product} quantity={quantity} variant={variant} />}
@@ -94,7 +99,9 @@ export function ProductDetail() {
             <span className="ml-3 text-xs text-muted">{EN.PRODUCT.SKU}: {variant.sku}</span>
           </p>
 
-          {enquiryOnly ? (
+          {onRequest ? (
+            <EnquiryButton className="mt-4" fullWidth product={product} size="lg" store={store} variant="accent"><MessageSquareQuote className="size-5" />{EN.PRODUCT.GET_QUOTE}</EnquiryButton>
+          ) : enquiryOnly ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <EnquiryButton mode="on_road" product={product} size="lg" store={store} variant="accent"><MessageSquareQuote className="size-5" />{B.ENQUIRY.CTA_ON_ROAD}</EnquiryButton>
               <EnquiryButton mode="test_ride" product={product} size="lg" store={store} variant="outline"><Bike className="size-5" />{B.ENQUIRY.CTA_TEST_RIDE}</EnquiryButton>
