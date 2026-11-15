@@ -117,7 +117,7 @@ export const STORES = [
     returnPolicy: "Vehicle sales are final after registration. Booking amount refundable within 7 days.",
     shippingMethods: [{ id: 23, name: "Showroom Delivery (Pune)", type: "store_pickup", fee: 0, freeAbove: null, minDays: 2, maxDays: 7, codAllowed: false }],
   },
-  {slug: "naveen-prints",name: "Naveen Xerox & Prints",initials: "NP",color: "#0e7490",banner: "linear-gradient(120deg,#083344,#0e7490 55%,#22d3ee)",city: "Chennai",state: "Tamil Nadu",gstStateCode: "33",gstin: "33AAKPN5512H1Z4",rating: 0,ratingCount: 0,since: 2026,isFeatured: true,tagline: "Xerox, colour prints, ID cards, flex banners & sign boards — neat work, fast turnaround.",returnPolicy: "Printing is made to order, so it can't be returned. Misprints or damage in transit are reprinted free.",noSampleOrders: true,shippingMethods: [{id: 24,name: "Pick up at shop (Chennai)",type: "store_pickup",fee: 0,freeAbove: null,minDays: 0,maxDays: 1,codAllowed: true},{id: 25,name: "Local delivery (Chennai)",type: "local_delivery",fee: 40,freeAbove: 499,minDays: 0,maxDays: 2,codAllowed: true,pincodes: ["600","601","603"]},{id: 26,name: "Standard Delivery",type: "standard",fee: 60,freeAbove: 999,minDays: 3,maxDays: 6,codAllowed: true}]},
+  {slug: "lakshmi-graphics",name: "Lakshmi Graphics – Indian Xerox",initials: "LG",color: "#9d174d",banner: "linear-gradient(120deg,#1e1b4b,#7f1d4f 55%,#db2777)",city: "Chennai",state: "Tamil Nadu",gstStateCode: "33",gstin: "33AAKPN5512H1Z4",rating: 0,ratingCount: 0,since: 2026,isFeatured: true,tagline: "Your print partner — Print smart, grow big. Xerox, ID cards, flex, sign boards, offset & branding items.",returnPolicy: "Printing is made to order, so it can't be returned. Misprints or damage in transit are reprinted free.",noSampleOrders: true,shippingMethods: [{id: 24,name: "Pick up at shop (Chennai)",type: "store_pickup",fee: 0,freeAbove: null,minDays: 0,maxDays: 1,codAllowed: true},{id: 25,name: "Local delivery (Chennai)",type: "local_delivery",fee: 40,freeAbove: 499,minDays: 0,maxDays: 2,codAllowed: true,pincodes: ["600","601","603"]},{id: 26,name: "Standard Delivery",type: "standard",fee: 60,freeAbove: 999,minDays: 3,maxDays: 6,codAllowed: true}]},
 ];
 
 // Business profile shown on store pages and in admin (Alibaba / IndiaMART style). SAMPLE values.
@@ -135,13 +135,13 @@ const PROFILES = {
   chefpro: { businessType: "Manufacturer", yearEstablished: 2005, employees: "101–500", annualTurnover: "₹10–25 Cr", plan: "platinum", responseRate: 93, responseHours: 3, certifications: ["ISO 9001:2015", "NSF Certified (selected lines)", "BIS Registered"], mainMarkets: ["All India", "Sri Lanka", "UAE"], contactPerson: "Revathi Natarajan", phone: "+91 422 450 7700", ownerEmail: "chefpro@kartiva.demo" },
   "jalandhar-sports": { businessType: "Manufacturer & Exporter", yearEstablished: 1987, employees: "101–500", annualTurnover: "₹10–25 Cr", plan: "gold", responseRate: 90, responseHours: 4, certifications: ["ISO 9001:2015", "SGPC Export House"], mainMarkets: ["All India", "UK", "Australia", "South Africa"], contactPerson: "Gurpreet Singh", phone: "+91 181 460 3344", ownerEmail: "sports@kartiva.demo" },
   "velocity-motors": { businessType: "Authorised Dealer", yearEstablished: 2012, employees: "11–50", annualTurnover: "₹10–25 Cr", plan: "gold", responseRate: 99, responseHours: 1, certifications: ["Authorised Dealer Certificate", "RTO Trade Certificate"], mainMarkets: ["Pune", "Pimpri-Chinchwad"], contactPerson: "Aditya Kulkarni", phone: "+91 20 4700 9911", ownerEmail: "motors@kartiva.demo" },
-  "naveen-prints": {businessType: "Printing & Xerox Services",yearEstablished: 2018,employees: "1–10",annualTurnover: "Up to ₹1 Cr",plan: "free",responseRate: 100,responseHours: 1,certifications: ["Udyam Registered"],mainMarkets: ["Chennai"],contactPerson: "Naveen",phone: "+91 44 4000 1234",ownerEmail: "naveen@kartiva.demo"},
+  "lakshmi-graphics": {businessType: "Printing & Xerox Services",yearEstablished: 2018,employees: "1–10",annualTurnover: "Up to ₹1 Cr",plan: "free",responseRate: 100,responseHours: 1,certifications: ["Udyam Registered","Offset & large-format printing"],mainMarkets: ["Chennai"],contactPerson: "Sivalingiah P L",phone: "+91 90436 64978",ownerEmail: "lakshmi@kartiva.demo"},
 };
-const VERIFIED = { fitzone: "pending", glowup: "pending", "naveen-prints": "pending" };
+const VERIFIED = { fitzone: "pending", glowup: "pending", "lakshmi-graphics": "pending" };
 STORES.forEach((s) => Object.assign(s, {
   address: `${s.city}, ${s.state}`,
   badges: [...(s.rating >= 4.5 ? ["top_rated"] : []), ...(PROFILES[s.slug].plan !== "free" ? ["trusted"] : [])],
-  gstVerified: s.slug !== "naveen-prints", // Naveen's proofs are still waiting for admin approval
+  gstVerified: s.slug !== "lakshmi-graphics", // Lakshmi Graphics' proofs are still waiting for admin approval
   kycStatus: VERIFIED[s.slug] ?? "verified",
   ...PROFILES[s.slug],
 }));

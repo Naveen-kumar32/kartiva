@@ -214,6 +214,9 @@
   "back cover": [
    "case"
   ],
+  "baniyan": [
+   "t-shirt"
+  ],
   "banner": [
    "flex",
    "banner"
@@ -233,13 +236,41 @@
    "motorcycle",
    "scooter"
   ],
+  "bill book": [
+   "offset"
+  ],
+  "board": [
+   "board",
+   "sign"
+  ],
   "bommai": [
    "toy",
    "toys"
   ],
+  "botal": [
+   "bottle"
+  ],
+  "bottle": [
+   "bottle"
+  ],
+  "box": [
+   "box",
+   "boxes"
+  ],
+  "branding": [
+   "custom printed",
+   "logo"
+  ],
   "bulb": [
    "light",
    "bulb"
+  ],
+  "cake box": [
+   "boxes"
+  ],
+  "carry bag": [
+   "tote bag",
+   "bag"
   ],
   "cell": [
    "phone"
@@ -286,6 +317,9 @@
   "chudi": [
    "bangles"
   ],
+  "cloth bag": [
+   "tote bag"
+  ],
   "computer": [
    "laptop",
    "computer"
@@ -296,6 +330,14 @@
   "cover": [
    "case",
    "cover"
+  ],
+  "cup": [
+   "mug",
+   "cup"
+  ],
+  "cups": [
+   "mug",
+   "cup"
   ],
   "cycle": [
    "bicycle",
@@ -355,6 +397,13 @@
   "ghadi": [
    "watch"
   ],
+  "gift box": [
+   "boxes"
+  ],
+  "glow board": [
+   "lighting",
+   "sign"
+  ],
   "goggles": [
    "sunglasses",
    "glasses"
@@ -384,6 +433,9 @@
   ],
   "jerox": [
    "xerox"
+  ],
+  "jersey": [
+   "t-shirt"
   ],
   "jewelry": [
    "jewellery"
@@ -467,6 +519,9 @@
   "kela": [
    "banana"
   ],
+  "kep": [
+   "cap"
+  ],
   "kheera": [
    "cucumber"
   ],
@@ -488,6 +543,13 @@
   "kulfi": [
    "ice cream"
   ],
+  "kup": [
+   "mug",
+   "cup"
+  ],
+  "kuppi": [
+   "bottle"
+  ],
   "kursi": [
    "chair"
   ],
@@ -495,11 +557,25 @@
    "kurta",
    "shirt"
   ],
+  "kuvalai": [
+   "mug",
+   "cup"
+  ],
   "laminate": [
    "lamination"
   ],
   "lamination": [
    "lamination"
+  ],
+  "led board": [
+   "lighting",
+   "board"
+  ],
+  "letterhead": [
+   "offset"
+  ],
+  "logo print": [
+   "custom printed"
   ],
   "maambazham": [
    "mango"
@@ -579,11 +655,23 @@
   "namak": [
    "salt"
   ],
+  "name board": [
+   "sign board",
+   "lighting"
+  ],
+  "name sticker": [
+   "labels",
+   "stickers"
+  ],
   "narkali": [
    "chair"
   ],
   "nighty": [
    "dress"
+  ],
+  "notice": [
+   "offset",
+   "pamphlets"
   ],
   "paal": [
    "milk"
@@ -645,6 +733,9 @@
    "fragrance",
    "perfume",
    "eau"
+  ],
+  "pettigal": [
+   "boxes"
   ],
   "phal": [
    "fruit"
@@ -711,6 +802,9 @@
    "fragrance",
    "perfume"
   ],
+  "school label": [
+   "school book labels"
+  ],
   "scooty": [
    "scooter"
   ],
@@ -731,6 +825,9 @@
   "shampu": [
    "shampoo"
   ],
+  "sipper": [
+   "bottle"
+  ],
   "sneakers": [
    "shoes"
   ],
@@ -746,6 +843,9 @@
   ],
   "sticker": [
    "stickers"
+  ],
+  "sweet box": [
+   "boxes"
   ],
   "t shirt": [
    "t-shirt",
@@ -764,6 +864,12 @@
   "tawa": [
    "pan",
    "tawa"
+  ],
+  "tee": [
+   "t-shirt"
+  ],
+  "tees": [
+   "t-shirt"
   ],
   "tel": [
    "oil"
@@ -786,6 +892,10 @@
   "thanni": [
    "water"
   ],
+  "thanni bottle": [
+   "water bottle",
+   "bottle"
+  ],
   "thattu": [
    "plate"
   ],
@@ -801,9 +911,18 @@
   "theneer": [
    "tea"
   ],
+  "thoppi": [
+   "cap"
+  ],
   "thosai kal": [
    "pan",
    "tawa"
+  ],
+  "thuni pai": [
+   "tote bag"
+  ],
+  "topi": [
+   "cap"
   ],
   "trainers": [
    "shoes"
@@ -815,7 +934,8 @@
   ],
   "tumbler": [
    "glass",
-   "tumbler"
+   "tumbler",
+   "mug"
   ],
   "tv": [
    "television"
@@ -876,6 +996,7 @@
    "light"
   ],
   "visiting card": [
+   "offset",
    "card"
   ],
   "xerox": [
@@ -915,6 +1036,13 @@
   "காபி": [
    "coffee"
   ],
+  "குப்பி": [
+   "bottle"
+  ],
+  "குவளை": [
+   "mug",
+   "cup"
+  ],
   "கைபேசி": [
    "phone",
    "smartphone"
@@ -946,6 +1074,9 @@
   ],
   "தேன்": [
    "honey"
+  ],
+  "தொப்பி": [
+   "cap"
   ],
   "நகை": [
    "jewellery"
