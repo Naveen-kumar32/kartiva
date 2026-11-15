@@ -3,6 +3,7 @@
 // plans, KYC documents, seller team, admin staff, notifications and CMS pages. All people are fictional.
 // Shapes are the contract shared by src/api/* — see docs/DATABASE_SCHEMA.md §2.31 (marketplace growth).
 import { CMS_CONTENT } from "./cmsContent";
+import KYC_SAMPLES from "./kycSamples.json";
 
 const SEED_NOW = new Date("2026-11-11T12:00:00+05:30").getTime();
 const HOUR = 3_600_000;
@@ -138,20 +139,9 @@ export const SEED_SUBSCRIPTIONS = Object.entries(SUB_SLUGS).map(([storeSlug, pla
 });
 
 // ---------- KYC documents ----------
-// status: pending | verified | rejected
-const DOC_TYPES = ["gst_certificate", "pan_card", "cancelled_cheque", "address_proof"];
-export const SEED_KYC = [];
-["technest", "gadget-galaxy", "urbanthread", "luxe-lane", "homecraft", "spice-route", "annapoorna-wholesale", "chefpro", "jalandhar-sports", "velocity-motors", "fitzone"].forEach((slug) => {
-  DOC_TYPES.forEach((type) => {
-    const pending = slug === "fitzone" || (slug === "jalandhar-sports" && type === "gst_certificate");
-    SEED_KYC.push({ fileName: `${slug}-${type.replace(/_/g, "-")}.pdf`, id: SEED_KYC.length + 1, note: "", reviewedAt: pending ? null : ago(24 * 30), reviewedBy: pending ? null : "Rohan Das", sizeKb: 180 + ((SEED_KYC.length * 37) % 600), status: pending ? "pending" : "verified", storeSlug: slug, type, uploadedAt: ago(pending ? 20 : 24 * 32) });
-  });
-});
-SEED_KYC.push({ fileName: "fitzone-trade-licence.jpg", id: SEED_KYC.length + 1, note: "Image is blurred — please upload a clear scan.", reviewedAt: ago(10), reviewedBy: "Rohan Das", sizeKb: 920, status: "rejected", storeSlug: "fitzone", type: "trade_licence", uploadedAt: ago(40) });
-// Naveen Xerox & Prints: SAMPLE proofs (watermarked, fictional) waiting for admin approval — files in /public/samples/kyc.
-[["gst_certificate", "gst-certificate.pdf", 113], ["pan_card", "pan-card.png", 224], ["cancelled_cheque", "cancelled-cheque.png", 80], ["address_proof", "address-proof.pdf", 103], ["shop_establishment", "shop-establishment-certificate.pdf", 141], ["udyam_certificate", "udyam-certificate.pdf", 106], ["trade_licence", "trade-licence.pdf", 103], ["owner_photo", "owner-photo.png", 23]].forEach(([type, file, sizeKb], i) => {
-  SEED_KYC.push({ fileName: file, fileType: file.endsWith(".pdf") ? "application/pdf" : "image/png", fileUrl: `/samples/kyc/naveen-prints/${file}`, id: SEED_KYC.length + 1, note: "", reviewedAt: null, reviewedBy: null, sizeKb, status: "pending", storeSlug: "naveen-prints", type, uploadedAt: new Date(Date.UTC(2026, 10, 14, 4 + i, 30)).toISOString() });
-});
+// status: pending | verified | rejected. Every seller has SAMPLE proofs (watermarked, fictional) in /public/samples/kyc —
+// the same list is loaded into PostgreSQL by `seed_demo` (backend/fixtures/demo_data.json).
+export const SEED_KYC = KYC_SAMPLES;
 
 // ---------- Seller team members ----------
 // role: owner | manager | catalogue | orders | accounts. status: active | invited | disabled

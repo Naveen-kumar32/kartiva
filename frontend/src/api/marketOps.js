@@ -62,7 +62,8 @@ export function recomputeKyc(storeSlug) {
   else if (docs.some((d) => d.status === "pending")) store.kycStatus = "pending";
   else if (docs.some((d) => d.status === "rejected")) store.kycStatus = "rejected";
   else store.kycStatus = docs.length ? "pending" : "not_submitted";
-  store.gstVerified = latest("gst_certificate")?.status === "verified";
+  // GST badge: verified GST certificate, or the GSTIN passed the admin's "Check GSTIN" portal check
+  store.gstVerified = latest("gst_certificate")?.status === "verified" || Boolean(store.gstCheck?.valid);
   refreshBadges(store);
   return store;
 }

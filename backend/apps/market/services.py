@@ -195,7 +195,8 @@ def recompute_kyc(store_slug):
     else:
         s["kycStatus"] = "pending" if docs else "not_submitted"
     gst = latest("gst_certificate")
-    s["gstVerified"] = bool(gst and gst.get("status") == "verified")
+    # GST badge: the GST certificate is verified, or the GSTIN passed the admin's "Check GSTIN" portal check.
+    s["gstVerified"] = bool(gst and gst.get("status") == "verified") or bool((s.get("gstCheck") or {}).get("valid"))
     refresh_badges(s)
     store.save()
     return store

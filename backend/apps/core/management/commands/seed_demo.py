@@ -61,15 +61,15 @@ class Command(BaseCommand):
                 obj.save()
             counts[key] = len(rows)
 
-        # Sample KYC proofs: kycDocuments rows with "sampleFile" get the real file attached (fixtures/<sampleFile>).
+        # Sample KYC proofs: kycDocuments rows with "sampleFile" get the real file attached (frontend/public/samples/<sampleFile>).
         KycDocument, StoredFile = apps.get_model("market.KycDocument"), apps.get_model("core.StoredFile")
         for doc in KycDocument.objects.all():
             rel = doc.data.pop("sampleFile", None)
             if not rel:
                 continue
-            path = Path(opts["file"]).parent / rel
+            path = Path(settings.BASE_DIR).parent / "frontend" / "public" / "samples" / rel  # single copy, shared with the frontend demo
             content = path.read_bytes()
-            ctype = "application/pdf" if path.suffix == ".pdf" else "image/png" if path.suffix == ".png" else "image/jpeg"
+            ctype = {".pdf": "application/pdf", ".png": "image/png"}.get(path.suffix, "image/jpeg")
             stored = StoredFile.objects.create(kind="kyc", owner=doc.data.get("storeSlug"), name=path.name, content_type=ctype, size=len(content), content=content)
             doc.data.update(fileId=stored.id, fileName=path.name, fileType=ctype, sizeKb=-(-len(content) // 1024))
             doc.save()
