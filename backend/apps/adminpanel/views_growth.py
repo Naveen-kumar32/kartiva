@@ -1,13 +1,18 @@
 """Admin growth API — port of frontend src/api/adminGrowthApi.js: leads & RFQs, product requests, KYC, membership
 plans, support desk, CMS / announcement / homepage sections, broadcasts, staff & roles, risk flags, analytics,
 transactions and the tax centre. Admin JWT required; every write audit-logged with the admin's name."""
+import io
 import re
+import zipfile
 from datetime import datetime, timezone
 
+from django.http import HttpResponse
 from rest_framework.response import Response
 
 from apps.catalog.models import Store
 from apps.core.errors import ApiError
+from apps.core.files import file_response
+from apps.core.models import StoredFile
 from apps.core.services import atomic, audit, get_platform, get_singleton, notify, now_iso, save_platform, send_email, set_singleton
 from apps.market.models import AdminStaff, Broadcast, CmsPage, Enquiry, KycDocument, Plan, Rfq, Subscription, Thread, Ticket
 from apps.market.services import dispatch_rfq, recompute_kyc, refresh_badges
@@ -158,6 +163,39 @@ def forward_rfq(request, pk):
 @admin_api("GET")
 def kyc_queue(request):
     return svc.kyc_queue()
+
+
+@admin_api("GET")
+def kyc_file(request, pk):
+    """View (inline) or download (?download=1) one seller document. Admin only; every access is audit-logged."""
+    doc = get_or_404(KycDocument.objects.filter(pk=pk), "Document not found.").data
+    stored = StoredFile.objects.filter(kind="kyc", owner=doc.get("storeSlug"), id=doc.get("fileId")).first() if doc.get("fileId") else None
+    if not stored:
+        raise ApiError("No file was stored for this document (older sample record — ask the seller to upload it again).", 404)
+    download = request.query_params.get("download") == "1"
+    audit("kyc.downloaded" if download else "kyc.viewed", f"Store {doc.get('storeSlug')}", f"{str(doc.get('type') or '').replace('_', ' ')} ({stored.name})", actor(request))
+    return file_response(stored, download)
+
+
+@admin_api("GET")
+def kyc_store_zip(request, slug):
+    """All of one seller's stored documents in a single ZIP."""
+    store = get_or_404(Store.objects.filter(slug=slug), "Store not found.")
+    docs = [d.data for d in KycDocument.objects.filter(store_slug=slug) if d.data.get("fileId")]
+    files = {f.id: f for f in StoredFile.objects.filter(kind="kyc", owner=slug, id__in=[d["fileId"] for d in docs])}
+    if not files:
+        raise ApiError("This seller has no stored document files yet.", 404)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for d in docs:
+            f = files.get(d["fileId"])
+            if f:
+                z.writestr(f"{d.get('type')}-{d.get('status')}-{f.name}", bytes(f.content))
+    audit("kyc.downloaded", f"Store {slug}", f"All documents as ZIP ({len(files)} files)", actor(request))
+    res = HttpResponse(buf.getvalue(), content_type="application/zip")
+    res["Content-Disposition"] = f'attachment; filename="{slug}-kyc-documents.zip"'
+    res["Cache-Control"] = "private, no-store"
+    return res
 
 
 @admin_api("POST")

@@ -26,7 +26,7 @@ COLLECTIONS = {
     "kycDocuments": "market.KycDocument", "plans": "market.Plan", "rfqs": "market.Rfq", "sellerStaff": "market.SellerStaff",
     "subscriptions": "market.Subscription", "threads": "market.Thread", "tickets": "market.Ticket",
 }
-EXTRA_MODELS = ["catalog.Review", "market.Wishlist", "market.SellerHub", "core.IdempotencyKey", "core.Singleton"]
+EXTRA_MODELS = ["catalog.Review", "market.Wishlist", "market.SellerHub", "core.IdempotencyKey", "core.Singleton", "core.StoredFile"]
 
 
 class Command(BaseCommand):
@@ -60,6 +60,19 @@ class Command(BaseCommand):
                 obj = model(pk=row["id"], data=row)
                 obj.save()
             counts[key] = len(rows)
+
+        # Sample KYC proofs: kycDocuments rows with "sampleFile" get the real file attached (fixtures/<sampleFile>).
+        KycDocument, StoredFile = apps.get_model("market.KycDocument"), apps.get_model("core.StoredFile")
+        for doc in KycDocument.objects.all():
+            rel = doc.data.pop("sampleFile", None)
+            if not rel:
+                continue
+            path = Path(opts["file"]).parent / rel
+            content = path.read_bytes()
+            ctype = "application/pdf" if path.suffix == ".pdf" else "image/png" if path.suffix == ".png" else "image/jpeg"
+            stored = StoredFile.objects.create(kind="kyc", owner=doc.data.get("storeSlug"), name=path.name, content_type=ctype, size=len(content), content=content)
+            doc.data.update(fileId=stored.id, fileName=path.name, fileType=ctype, sizeKb=-(-len(content) // 1024))
+            doc.save()
 
         Review = apps.get_model("catalog.Review")
         hidden = set(map(str, data.get("hiddenReviews") or []))

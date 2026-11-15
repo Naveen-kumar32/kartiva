@@ -6,6 +6,7 @@ import re
 from functools import wraps
 
 from django.core.management import call_command
+from django.http.response import HttpResponseBase
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -30,7 +31,7 @@ def admin_api(*methods):
         def view(request, *args, **kwargs):
             require_admin(request)
             result = fn(request, *args, **kwargs)
-            return result if isinstance(result, Response) else Response(result)
+            return result if isinstance(result, HttpResponseBase) else Response(result)  # file downloads pass through
         return api_view(list(methods))(view)
     return deco
 

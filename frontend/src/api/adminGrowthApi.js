@@ -230,6 +230,36 @@ export async function getKycQueue() {
   }, 200);
 }
 
+// Blob requests return errors as a Blob too — turn {"detail": …} back into a normal API error message.
+async function blobOrError(request) {
+  try {
+    return (await request).data;
+  } catch (err) {
+    const data = err?.response?.data;
+    if (data instanceof Blob) {
+      const detail = await data.text().then((t) => JSON.parse(t).detail).catch(() => null);
+      if (detail) throw apiError(detail, err.response.status);
+    }
+    throw err;
+  }
+}
+
+/** A seller document's file as a Blob (admin only). API mode: private endpoint; mock: sample file / in-browser copy. */
+export async function getKycFile(doc, { download = false } = {}) {
+  if (!IS_MOCK) return blobOrError(axiosInstance.get(API.ADMIN_KYC_FILE(doc.id), { params: download ? { download: 1 } : undefined, responseType: "blob" }));
+  await mockDelay(null, 150);
+  const src = doc.fileData ?? doc.fileUrl;
+  if (!src) throw apiError("No file was stored for this document (older sample record — ask the seller to upload it again).", 404);
+  audit(download ? "kyc.downloaded" : "kyc.viewed", `Store ${doc.storeSlug}`, `${doc.type.replace(/_/g, " ")} (${doc.fileName})`);
+  commit();
+  return (await fetch(src)).blob();
+}
+
+/** Every stored document of one seller as a ZIP (API mode). Mock mode has no ZIP — the page downloads files one by one. */
+export async function getKycZip(storeSlug) {
+  return blobOrError(axiosInstance.get(API.ADMIN_KYC_ZIP(storeSlug), { responseType: "blob" }));
+}
+
 export async function reviewKycDocument(docId, decision, note, actor) {
   if (!IS_MOCK) return withCatalog(remote("post", API.ADMIN_KYC_REVIEW(docId, decision), { note }));
   return run(() => {

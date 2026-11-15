@@ -146,7 +146,7 @@ export function SellerBusiness() {
     if (file.size > MAX_BYTES) return errorToast(B.FILE_SIZE);
     setUploading(type);
     try {
-      await uploadKycDocument(storeSlug, type, { name: file.name, size: file.size, type: file.type }, actor);
+      await uploadKycDocument(storeSlug, type, file, actor); // the real file — admins can view/download it
       setData(await getBusinessProfile(storeSlug));
       successToast(B.UPLOAD_DONE);
     } catch (err) {

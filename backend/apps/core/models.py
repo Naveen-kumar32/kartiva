@@ -55,3 +55,15 @@ class IdempotencyKey(models.Model):
     key = models.CharField(max_length=200, unique=True)
     result_ref = models.CharField(max_length=120)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class StoredFile(models.Model):
+    """Private uploaded files (e.g. seller KYC proofs). Never served publicly — only through permission-checked views.
+    Kept in the database for now; swap to private object storage (S3/R2) later without changing the API."""
+    kind = models.CharField(max_length=30, db_index=True)          # "kyc"
+    owner = models.CharField(max_length=100, db_index=True)        # store slug for KYC
+    name = models.CharField(max_length=160)
+    content_type = models.CharField(max_length=80)
+    size = models.PositiveIntegerField()
+    content = models.BinaryField()
+    created_at = models.DateTimeField(auto_now_add=True)

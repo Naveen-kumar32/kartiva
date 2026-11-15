@@ -137,11 +137,11 @@ const PROFILES = {
   "velocity-motors": { businessType: "Authorised Dealer", yearEstablished: 2012, employees: "11–50", annualTurnover: "₹10–25 Cr", plan: "gold", responseRate: 99, responseHours: 1, certifications: ["Authorised Dealer Certificate", "RTO Trade Certificate"], mainMarkets: ["Pune", "Pimpri-Chinchwad"], contactPerson: "Aditya Kulkarni", phone: "+91 20 4700 9911", ownerEmail: "motors@kartiva.demo" },
   "naveen-prints": {businessType: "Printing & Xerox Services",yearEstablished: 2018,employees: "1–10",annualTurnover: "Up to ₹1 Cr",plan: "free",responseRate: 100,responseHours: 1,certifications: ["Udyam Registered"],mainMarkets: ["Chennai"],contactPerson: "Naveen",phone: "+91 44 4000 1234",ownerEmail: "naveen@kartiva.demo"},
 };
-const VERIFIED = { fitzone: "pending", glowup: "not_submitted" };
+const VERIFIED = { fitzone: "pending", glowup: "not_submitted", "naveen-prints": "pending" };
 STORES.forEach((s) => Object.assign(s, {
   address: `${s.city}, ${s.state}`,
   badges: [...(s.rating >= 4.5 ? ["top_rated"] : []), ...(PROFILES[s.slug].plan !== "free" ? ["trusted"] : [])],
-  gstVerified: true,
+  gstVerified: s.slug !== "naveen-prints", // Naveen's proofs are still waiting for admin approval
   kycStatus: VERIFIED[s.slug] ?? "verified",
   ...PROFILES[s.slug],
 }));

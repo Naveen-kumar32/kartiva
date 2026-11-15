@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { EN } from "@/locales";
 
-export function Modal({ children, onClose, open, title }) {
+export function Modal({ children, onClose, open, size = "md", title }) {
   const panelRef = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
@@ -22,7 +22,7 @@ export function Modal({ children, onClose, open, title }) {
             animate={{ scale: 1, y: 0 }}
             aria-labelledby="modal-title"
             aria-modal="true"
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-raised outline-none"
+            className={`max-h-[calc(100dvh-2rem)] w-full ${size === "xl" ? "max-w-4xl" : "max-w-md"} overflow-y-auto rounded-2xl bg-white p-6 shadow-raised outline-none`}
             exit={{ scale: 0.97, y: 8 }}
             initial={{ scale: 0.97, y: 8 }}
             onClick={(e) => e.stopPropagation()}

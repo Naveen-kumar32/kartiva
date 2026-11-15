@@ -53,6 +53,8 @@ urlpatterns = [
     path("growth-summary/", g.growth_summary),
     path("home-sections/", g.home_sections),
     path("kyc/", g.kyc_queue),
+    path("kyc/<int:pk>/file/", g.kyc_file),
+    path("kyc/store/<slug:slug>/zip/", g.kyc_store_zip),
     path("kyc/<int:pk>/<str:decision>/", g.kyc_review),
     path("leads/", g.leads),
     path("pages/", g.pages),

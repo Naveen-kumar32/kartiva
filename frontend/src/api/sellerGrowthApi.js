@@ -445,9 +445,13 @@ export async function updateBusinessProfile(storeSlug, patch, actor) {
   });
 }
 
-/** file: { name, size (bytes), type (mime) } — only metadata is stored, never the file contents. */
+/** file: a File (stored privately, admin-only download) — or { name, size, type } metadata from older callers. */
 export async function uploadKycDocument(storeSlug, docType, file, actor) {
   if (!IS_MOCK) return remoteAndRefresh("post", API.SELLER_KYC, kycForm(docType, file), { headers: { "Content-Type": "multipart/form-data" } });
+  // Demo mode keeps a copy in the browser so the admin can open it (small files only — browser storage is limited).
+  const fileData = typeof Blob !== "undefined" && file instanceof Blob && file.size <= 700 * 1024
+    ? await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => resolve(null); r.readAsDataURL(file); })
+    : null;
   return run(() => {
     const d = getDb();
     const store = ownStore(storeSlug);
@@ -460,7 +464,7 @@ export async function uploadKycDocument(storeSlug, docType, file, actor) {
     // Re-upload replaces the previous document of this type
     const keep = d.kycDocuments.filter((k) => !(k.storeSlug === storeSlug && k.type === docType));
     d.kycDocuments.splice(0, d.kycDocuments.length, ...keep);
-    const doc = { fileName: String(file.name).slice(0, 120), fileType: ext === "pdf" ? "application/pdf" : `image/${ext === "jpg" ? "jpeg" : ext}`, id, note: "", reviewedAt: null, reviewedBy: null, sizeKb, status: "pending", storeSlug, type: docType, uploadedAt: nowIso() };
+    const doc = { fileData, fileName: String(file.name).slice(0, 120), fileType: ext === "pdf" ? "application/pdf" : `image/${ext === "jpg" ? "jpeg" : ext}`, id, note: "", reviewedAt: null, reviewedBy: null, sizeKb, status: "pending", storeSlug, type: docType, uploadedAt: nowIso() };
     d.kycDocuments.push(doc);
     recomputeKyc(storeSlug);
     notify({ role: "admin" }, "KYC document uploaded", `${store.name} uploaded ${docType.replace(/_/g, " ")} (${doc.fileName}) for verification.`, ROUTES.ADMIN.VERIFICATION);

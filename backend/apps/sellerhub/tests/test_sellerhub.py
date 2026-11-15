@@ -170,3 +170,42 @@ def test_ticket_create_and_lead_masking(seller_a):
     store.save()
     leads = seller_a.get("/api/v1/seller/leads/").json()["leads"]
     assert leads and all(lead["contactLocked"] and "•" in lead["buyer"]["email"] for lead in leads)
+
+
+def test_kyc_file_is_stored_and_only_admins_can_open_it(seller_a, as_user, anon):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.core.models import AuditLog, StoredFile
+    pdf = b"%PDF-1.4 sample kyc file"
+    res = seller_a.post("/api/v1/seller/business/kyc/", {"docType": "pan_card", "file": SimpleUploadedFile("my pan.pdf", pdf, content_type="application/pdf")}, format="multipart")
+    assert res.status_code == 201, res.content
+    doc = res.json()["doc"]
+    assert StoredFile.objects.get(id=doc["fileId"]).size == len(pdf)
+    # a fake file (renamed .exe) is rejected by its real signature, whatever the name says
+    fake = SimpleUploadedFile("cheque.png", b"MZ\x90\x00 not an image", content_type="image/png")
+    assert seller_a.post("/api/v1/seller/business/kyc/", {"docType": "cancelled_cheque", "file": fake}, format="multipart").status_code == 400
+
+    url = f"/api/v1/admin-api/kyc/{doc['id']}/file/"
+    assert seller_a.get(url).status_code == 403   # not even the owner via the admin endpoint
+    assert anon.get(url).status_code in (401, 403)
+    admin = as_user("admin@kartiva.demo")
+    got = admin.get(url + "?download=1")
+    assert got.status_code == 200 and got.content == pdf and got["Content-Type"] == "application/pdf"
+    assert got["Content-Disposition"].startswith("attachment") and got["Cache-Control"] == "private, no-store"
+    assert AuditLog.objects.filter(action="kyc.downloaded").exists()
+    zipped = admin.get("/api/v1/admin-api/kyc/store/technest/zip/")
+    assert zipped.status_code == 200 and zipped.content[:2] == b"PK"
+    # re-upload replaces the old file
+    seller_a.post("/api/v1/seller/business/kyc/", {"docType": "pan_card", "file": SimpleUploadedFile("pan2.pdf", b"%PDF-1.4 new", content_type="application/pdf")}, format="multipart")
+    assert not StoredFile.objects.filter(id=doc["fileId"]).exists()
+
+
+def test_seeded_sample_kyc_files_for_naveen(demo, as_user):
+    from apps.core.models import StoredFile
+    docs = list(KycDocument.objects.filter(store_slug="naveen-prints"))
+    assert len(docs) == 4 and all(d.data["status"] == "pending" and d.data.get("fileId") for d in docs)
+    assert StoredFile.objects.filter(owner="naveen-prints").count() == 4
+    assert Store.objects.get(slug="naveen-prints").data["kycStatus"] == "pending"
+    admin = as_user("admin@kartiva.demo")
+    pan = next(d for d in docs if d.data["type"] == "pan_card")
+    assert admin.get(f"/api/v1/admin-api/kyc/{pan.id}/file/").content[:4] == b"\x89PNG"

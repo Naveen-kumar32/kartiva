@@ -1,8 +1,9 @@
-import { Check, ExternalLink, FileText, Landmark, SearchCheck, ShieldCheck, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, Download, Eye, ExternalLink, FileText, FolderDown, Landmark, SearchCheck, ShieldCheck, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import { getKycQueue, reviewKycDocument, setTrustedBadge, verifyStoreGstin } from "@/api";
-import { Button, EmptyState, ErrorState, PageHeader, PageLoader, Panel, PromptDialog, SearchInput, StoreAvatar, Tabs, Toggle, VerifiedBadges } from "@/components";
+import { getKycFile, getKycQueue, getKycZip, reviewKycDocument, setTrustedBadge, verifyStoreGstin } from "@/api";
+import { IS_MOCK } from "@/config";
+import { Button, EmptyState, ErrorState, Modal, PageHeader, PageLoader, Panel, PromptDialog, SearchInput, StoreAvatar, Tabs, Toggle, VerifiedBadges } from "@/components";
 import { useAsync, useDocumentTitle } from "@/hooks";
 import { EN, ROUTES } from "@/locales";
 import { cn, errorToast, formatDate, formatDateTime, formatNumber, getErrorMessage, infoToast, successToast } from "@/utils";
@@ -22,6 +23,16 @@ const TABS = [
   ["not_submitted", (r) => r.store.kycStatus === "not_submitted"],
 ];
 
+const hasFile = (d) => Boolean(d.fileId || d.fileUrl || d.fileData);
+const saveBlob = (blob, name) => {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { download: name, href: url });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+};
+
 export function AdminVerification() {
   useDocumentTitle(P.TITLE);
   const actor = useActor();
@@ -32,6 +43,7 @@ export function AdminVerification() {
   const [busy, setBusy] = useState(null);
   const [checks, setChecks] = useState({});
   const [expanded, setExpanded] = useState({});
+  const [viewing, setViewing] = useState(null); // { doc, store }
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -59,6 +71,12 @@ export function AdminVerification() {
       setBusy(null);
     }
   };
+  const downloadDoc = (d) => act(`d-${d.id}`, async () => saveBlob(await getKycFile(d, { download: true }), d.fileName), null);
+  const downloadAll = (store, docs) => act(`z-${store.slug}`, async () => {
+    if (!IS_MOCK) return saveBlob(await getKycZip(store.slug), `${store.slug}-kyc-documents.zip`);
+    for (const d of docs.filter(hasFile)) saveBlob(await getKycFile(d, { download: true }), `${d.type}-${d.fileName}`);
+    return null;
+  }, null);
   const count = (k) => data.filter(TABS.find(([x]) => x === k)[1]).length;
 
   return (
@@ -93,6 +111,7 @@ export function AdminVerification() {
             <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
               <span className="flex items-center gap-2 text-sm"><Toggle checked={Boolean(store.badges?.includes("trusted"))} disabled={busy === `t-${store.slug}`} label={P.TRUSTED} onChange={(on) => act(`t-${store.slug}`, () => setTrustedBadge(store.slug, on, actor), on ? P.TRUSTED_ON(store.name) : P.TRUSTED_OFF(store.name), infoToast)} />{P.TRUSTED}</span>
               <Button loading={busy === `g-${store.slug}`} onClick={async () => { const res = await act(`g-${store.slug}`, () => verifyStoreGstin(store.slug, actor), (r) => (r.valid ? P.GST_OK : P.GST_FAIL), (m) => (m === P.GST_OK ? successToast(m) : errorToast(m))); if (res) setChecks((c) => ({ ...c, [store.slug]: res })); }} size="sm" variant="outline"><SearchCheck className="size-4" />{P.CHECK_GST}</Button>
+              {docs.some(hasFile) && <Button loading={busy === `z-${store.slug}`} onClick={() => downloadAll(store, docs)} size="sm" variant="outline"><FolderDown className="size-4" />{P.DOWNLOAD_ALL}</Button>}
               {store.status === "approved" && <Button aria-label={P.VIEW_STORE(store.name)} size="sm" title={P.VIEW_STORE(store.name)} to={ROUTES.STORE(store.slug)} variant="ghost"><ExternalLink className="size-4" /></Button>}
             </div>
           </div>
@@ -112,7 +131,16 @@ export function AdminVerification() {
                   {docs.map((d) => (
                     <tr className={cn(d.status === "pending" && "bg-amber-50/40")} key={d.id}>
                       <td className="px-5 py-2.5 font-medium">{P.DOC_TYPE[d.type] ?? d.type}</td>
-                      <td className="px-5 py-2.5"><span className="flex items-center gap-1.5"><FileText aria-hidden className="size-4 text-muted" /><span className="max-w-52 truncate font-mono text-xs">{d.fileName}</span></span><span className="text-xs text-muted">{P.SIZE_KB(formatNumber(d.sizeKb))}</span></td>
+                      <td className="px-5 py-2.5">
+                        <span className="flex items-center gap-1.5"><FileText aria-hidden className="size-4 text-muted" /><span className="max-w-52 truncate font-mono text-xs">{d.fileName}</span></span>
+                        <span className="text-xs text-muted">{P.SIZE_KB(formatNumber(d.sizeKb))}</span>
+                        {hasFile(d) ? (
+                          <span className="mt-1 flex gap-1">
+                            <Button onClick={() => setViewing({ doc: d, store })} size="sm" variant="ghost"><Eye className="size-4" />{P.VIEW_FILE}</Button>
+                            <Button loading={busy === `d-${d.id}`} onClick={() => downloadDoc(d)} size="sm" variant="ghost"><Download className="size-4" />{P.DOWNLOAD}</Button>
+                          </span>
+                        ) : <span className="mt-1 block text-[11px] text-muted">{P.NO_FILE}</span>}
+                      </td>
                       <td className="whitespace-nowrap px-5 py-2.5 text-xs" title={formatDateTime(d.uploadedAt)}>{formatDate(d.uploadedAt)}<span className="block text-muted">{timeAgo(d.uploadedAt)}</span></td>
                       <td className="px-5 py-2.5"><Pill tone={DOC_TONE[d.status]}>{P.DOC_STATUS[d.status] ?? d.status}</Pill></td>
                       <td className="max-w-60 px-5 py-2.5 text-xs text-muted">{d.reviewedBy ? `${d.reviewedBy} · ${formatDate(d.reviewedAt)}` : "—"}{d.note && <span className="block text-red-700">{d.note}</span>}</td>
@@ -130,6 +158,8 @@ export function AdminVerification() {
           )}
         </Panel>
       ))}
+
+      {viewing && <DocViewer doc={viewing.doc} onClose={() => setViewing(null)} onDownload={() => downloadDoc(viewing.doc)} store={viewing.store} />}
 
       {rejecting && (
         <PromptDialog
@@ -173,5 +203,36 @@ function GstPortalCard({ result }) {
         ].map(([k, v]) => <div className="flex justify-between gap-3 border-b border-line/60 py-1" key={k}><dt className="text-muted">{k}</dt><dd className="text-right">{v}</dd></div>)}
       </dl>
     </section>
+  );
+}
+
+/** In-page preview of a seller document (PDF or image), fetched with the admin's session — never a public link. */
+function DocViewer({ doc, onClose, onDownload, store }) {
+  const [state, setState] = useState({ error: null, url: null });
+  useEffect(() => {
+    let url = null;
+    let alive = true;
+    getKycFile(doc)
+      .then((blob) => { url = URL.createObjectURL(blob); if (alive) setState({ error: null, url }); })
+      .catch((err) => { if (alive) setState({ error: getErrorMessage(err), url: null }); });
+    return () => { alive = false; if (url) URL.revokeObjectURL(url); };
+  }, [doc]);
+  const isPdf = doc.fileType === "application/pdf" || doc.fileName?.toLowerCase().endsWith(".pdf");
+  return (
+    <Modal onClose={onClose} open size="xl" title={P.VIEW_TITLE(P.DOC_TYPE[doc.type] ?? doc.type, store.name)}>
+      <div className="h-[70vh] overflow-hidden rounded-lg border border-line bg-slate-100">
+        {state.error ? <p className="p-6 text-sm text-red-700">{state.error}</p>
+          : !state.url ? <div className="grid h-full place-items-center text-sm text-muted">{EN.COMMON.LOADING}</div>
+            : isPdf ? <iframe className="size-full" src={state.url} title={doc.fileName} />
+              : <img alt={doc.fileName} className="size-full object-contain" src={state.url} />}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-xs text-muted">{doc.fileName} · {P.SIZE_KB(formatNumber(doc.sizeKb))}</p>
+        <span className="flex gap-2">
+          {state.url && isPdf && <Button as="a" href={state.url} rel="noopener" size="sm" target="_blank" variant="outline"><ExternalLink className="size-4" />{P.OPEN_NEW_TAB}</Button>}
+          <Button onClick={onDownload} size="sm"><Download className="size-4" />{P.DOWNLOAD}</Button>
+        </span>
+      </div>
+    </Modal>
   );
 }

@@ -148,6 +148,10 @@ export const SEED_KYC = [];
   });
 });
 SEED_KYC.push({ fileName: "fitzone-trade-licence.jpg", id: SEED_KYC.length + 1, note: "Image is blurred — please upload a clear scan.", reviewedAt: ago(10), reviewedBy: "Rohan Das", sizeKb: 920, status: "rejected", storeSlug: "fitzone", type: "trade_licence", uploadedAt: ago(40) });
+// Naveen Xerox & Prints: SAMPLE proofs (watermarked, fictional) waiting for admin approval — files in /public/samples/kyc.
+[["gst_certificate", "gst-certificate.pdf", 113], ["pan_card", "pan-card.png", 224], ["cancelled_cheque", "cancelled-cheque.png", 80], ["address_proof", "address-proof.pdf", 103]].forEach(([type, file, sizeKb], i) => {
+  SEED_KYC.push({ fileName: file, fileType: file.endsWith(".pdf") ? "application/pdf" : "image/png", fileUrl: `/samples/kyc/naveen-prints/${file}`, id: SEED_KYC.length + 1, note: "", reviewedAt: null, reviewedBy: null, sizeKb, status: "pending", storeSlug: "naveen-prints", type, uploadedAt: new Date(Date.UTC(2026, 10, 15, 4 + i, 30)).toISOString() });
+});
 
 // ---------- Seller team members ----------
 // role: owner | manager | catalogue | orders | accounts. status: active | invited | disabled

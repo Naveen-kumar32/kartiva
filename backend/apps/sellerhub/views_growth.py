@@ -9,6 +9,8 @@ from rest_framework.response import Response
 
 from apps.catalog.models import Category, Product, StockMovement
 from apps.core.errors import ApiError
+from apps.core.files import save_upload
+from apps.core.models import StoredFile
 from apps.core.services import atomic, audit, get_platform, next_id, notify, now_iso, send_email
 from apps.market import views as market_views
 from apps.market.models import Enquiry, KycDocument, Plan, Rfq, SellerStaff, Subscription, Thread, Ticket
@@ -468,9 +470,13 @@ def kyc_upload(request):
     if not (size_kb > 0) or size_kb > KYC_MAX_KB:
         raise ApiError("File must be smaller than 5 MB.")
     with atomic():
-        KycDocument.objects.filter(store_slug=slug, data__type=doc_type).delete()  # a re-upload replaces the previous one
+        stored = save_upload("kyc", slug, upload) if upload else None  # the real file, kept private (admin-only download)
+        old = KycDocument.objects.filter(store_slug=slug, data__type=doc_type)  # a re-upload replaces the previous one
+        StoredFile.objects.filter(kind="kyc", owner=slug, id__in=[o.data.get("fileId") for o in old if o.data.get("fileId")]).delete()
+        old.delete()
         doc = KycDocument.create({
-            "fileName": name[:120], "fileType": "application/pdf" if ext == "pdf" else f"image/{'jpeg' if ext == 'jpg' else ext}", "note": "", "reviewedAt": None,
+            "fileName": (stored.name if stored else name)[:120], "fileType": stored.content_type if stored else "application/pdf" if ext == "pdf" else f"image/{'jpeg' if ext == 'jpg' else ext}",
+            "fileId": stored.id if stored else None, "note": "", "reviewedAt": None,
             "reviewedBy": None, "sizeKb": size_kb, "status": "pending", "storeSlug": slug, "type": doc_type, "uploadedAt": now_iso(),
         }).data
         store_row = recompute_kyc(slug)
