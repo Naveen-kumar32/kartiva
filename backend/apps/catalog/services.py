@@ -165,11 +165,39 @@ def category_directory():
     return roots
 
 
+SPOTLIGHT_CATEGORY = "printing-xerox"  # the client's own print business — spotlighted under the hero banner
+
+
+def _spotlight(cat, allp, active):
+    """Printing & Xerox block for the homepage (Admin → Website content → Home page can switch it off)."""
+    if (get_platform().get("homeSections") or {}).get("printingSpotlight") is False:
+        return None
+    root = cat.cat_by_slug.get(SPOTLIGHT_CATEGORY)
+    if not root or root.get("isActive") is False:
+        return None
+    slugs = cat.with_descendants(SPOTLIGHT_CATEGORY)
+    products = [p for p in allp if p.get("categorySlug") in slugs]
+    if not products:
+        return None
+    children = sorted([c for c in active if c.get("parentId") == root.get("id")], key=_sort_order)
+    counts = {c["slug"]: sum(1 for p in products if p.get("categorySlug") == c["slug"]) for c in children}
+    # a varied preview: take one product from each sub-category in turn (xerox, photos, flex, posters …), 6 in all
+    queues = sorted(([p for p in products if p.get("categorySlug") == c["slug"]] for c in children), key=len, reverse=True)  # biggest ranges first
+    picks = []
+    while len(picks) < 6 and any(queues):
+        for q in queues:
+            if q and len(picks) < 6:
+                picks.append(q.pop(0))
+    return {"category": root, "children": [{**c, "productCount": counts[c["slug"]]} for c in children if counts[c["slug"]]],
+            "productCount": len(products), "products": picks or products[:6]}
+
+
 def home():
     cat = Catalog()
     allp = [p for p in (cat.with_summary(p) for p in cat.public_products()) if p["summary"]["totalStock"] > 0]
     active = [c for c in cat.categories if c.get("isActive") is not False]
     return {
+        "spotlight": _spotlight(cat, allp, active),
         "featuredProducts": [p for p in allp if p.get("isFeatured")][:12],
         "featuredStores": [s for s in cat.stores.values() if s.get("isFeatured") and s.get("status") == "approved"],
         "newArrivals": sorted(allp, key=lambda p: p.get("createdAt") or "", reverse=True)[:12],

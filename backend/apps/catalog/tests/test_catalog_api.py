@@ -11,7 +11,7 @@ def test_categories_and_directory(demo, anon):
 
 def test_home(demo, anon):
     home = anon.get("/api/v1/home/").json()
-    assert set(home) == {"featuredProducts", "featuredStores", "newArrivals", "showBuyRequestBanner", "rootCategories", "topCategories", "trendingProducts"}
+    assert set(home) == {"featuredProducts", "featuredStores", "newArrivals", "showBuyRequestBanner", "rootCategories", "spotlight", "topCategories", "trendingProducts"}
     trending = home["trendingProducts"]
     assert len(trending) == 12 and trending[0]["soldCount"] >= trending[-1]["soldCount"] and "summary" in trending[0] and "store" in trending[0]
 

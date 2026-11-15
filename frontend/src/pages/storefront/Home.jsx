@@ -1,4 +1,4 @@
-import { BadgeCheck, ClipboardList, FileSpreadsheet, LayoutGrid, RotateCcw, ShieldCheck, Users, Wallet } from "lucide-react";
+import { ArrowRight, BadgeCheck, ClipboardList, FileSpreadsheet, LayoutGrid, Printer, RotateCcw, ShieldCheck, Users, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { getHome } from "@/api";
@@ -17,6 +17,8 @@ export function Home() {
   return (
     <Container className="space-y-10 pt-4 sm:pt-6">
       <AdSlot slotKey={AD_SLOT_KEYS.HOME_HERO_CAROUSEL} variant="carousel" />
+
+      {loading ? <ProductGridSkeleton count={6} /> : data?.spotlight && <PrintingSpotlight spotlight={data.spotlight} />}
 
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {EN.HOME.TRUST.map((t, i) => {
@@ -110,5 +112,41 @@ export function Home() {
         </div>
       </section>
     </Container>
+  );
+}
+
+/** The client's own print business, right under the hero banner (Admin → Website content → Home page → Printing & Xerox spotlight). */
+function PrintingSpotlight({ spotlight }) {
+  const { category, children, productCount, products } = spotlight;
+  const H = EN.HOME;
+  return (
+    <section aria-labelledby="spotlight-title" className="overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-line">
+      <div className="flex flex-col gap-4 bg-gradient-to-r from-[#1e1b4b] via-[#7f1d4f] to-[#db2777] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/15"><Printer aria-hidden className="size-6" /></span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/75">{H.SPOTLIGHT_EYEBROW}</p>
+            <h2 className="text-xl font-extrabold sm:text-2xl" id="spotlight-title">{category.name}</h2>
+            <p className="mt-1 max-w-3xl text-sm text-white/85">{H.SPOTLIGHT_BODY}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button size="md" to={ROUTES.CATEGORY(category.slug)} variant="accent">{H.SPOTLIGHT_CTA(productCount)}<ArrowRight className="size-4" /></Button>
+          <Link className="inline-flex h-10 items-center justify-center rounded-lg border border-white/50 px-4 text-sm font-semibold text-white transition hover:bg-white/10" to={ROUTES.POST_REQUIREMENT}>{H.SPOTLIGHT_QUOTE}</Link>
+        </div>
+      </div>
+      <div className="space-y-4 p-4 sm:p-6">
+        <ul className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {children.map((c) => (
+            <li className="shrink-0" key={c.slug}>
+              <Link className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-medium hover:border-pink-300 hover:bg-pink-50 hover:text-pink-800" to={ROUTES.CATEGORY(c.slug)}>
+                {c.name}<span className="rounded-full bg-slate-100 px-1.5 text-xs text-muted">{c.productCount}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <ProductRail products={products} />
+      </div>
+    </section>
   );
 }

@@ -522,7 +522,7 @@ export async function addTicketNote(id, text, actor) {
 }
 
 // ---------- Content (CMS, announcement bar, homepage sections) ----------
-export const DEFAULT_HOME_SECTIONS = { buyRequestBanner: true, featuredStores: true, heroCarousel: true, sponsoredRow: true };
+export const DEFAULT_HOME_SECTIONS = { buyRequestBanner: true, featuredStores: true, heroCarousel: true, printingSpotlight: true, sponsoredRow: true };
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function getAdminContent() {

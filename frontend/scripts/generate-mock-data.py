@@ -149,7 +149,7 @@ CATEGORY_TREE = [
         ("logistics-services", "Logistics & Transport", None), ("installation-repair", "Installation & Repair", None),
         ("business-services", "Business & Consulting", None), ("event-services", "Event & Wedding Services", None),
     ]),
-    # Added last so every earlier category keeps its id. Shown in the top menu right after Vehicles (SORT_OVERRIDE).
+    # Added last so every earlier category keeps its id. Shown FIRST in menus and lists (SORT_OVERRIDE).
     ("printing-xerox", "Printing & Xerox", "Printing & Xerox", True, ("4911", 18), [
         ("xerox-prints", "Xerox, Printouts & Lamination", None), ("photos-id-cards", "Photos & ID Cards", None),
         ("flex-sign-boards", "Flex, Banners & Sign Boards", None), ("posters-stickers", "Posters, Stickers & Labels", None),
@@ -159,7 +159,7 @@ CATEGORY_TREE = [
         ("calendars-diaries", "Calendars, Diaries & Notebooks", None),
     ]),
 ]
-SORT_OVERRIDE = {"printing-xerox": 7.5}  # between Vehicles (7) and Packaging (8)
+SORT_OVERRIDE = {"printing-xerox": -1}  # the client's own business — first in every category list
 INACTIVE = {"printing-services"}  # replaced by the Printing & Xerox category (kept so ids stay stable)
 
 # Move some sample products into a more specific leaf (by title), and ChefPro's range into Commercial Kitchen.

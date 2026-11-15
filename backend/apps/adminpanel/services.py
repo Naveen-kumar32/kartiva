@@ -20,7 +20,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 PLATFORM_STATE = "33"  # Kartiva is registered in Tamil Nadu
 GSTIN_RE = re.compile(r"^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")
 SLA_HOURS = {"high": 8, "low": 72, "medium": 24, "urgent": 4}
-DEFAULT_HOME_SECTIONS = {"buyRequestBanner": True, "featuredStores": True, "heroCarousel": True, "sponsoredRow": True}
+DEFAULT_HOME_SECTIONS = {"buyRequestBanner": True, "featuredStores": True, "heroCarousel": True, "printingSpotlight": True, "sponsoredRow": True}
 HIDDEN_PLATFORM_KEYS = {"idempotency", "dismissedRiskFlags"}
 
 

@@ -16,7 +16,7 @@ import { useActor } from "./opsUtils";
 
 const P = EN.ADMIN_PRO.CONTENT;
 const C = EN.ADMIN_PRO.COMMON;
-const SECTIONS = ["heroCarousel", "sponsoredRow", "featuredStores", "buyRequestBanner"];
+const SECTIONS = ["printingSpotlight", "heroCarousel", "sponsoredRow", "featuredStores", "buyRequestBanner"];
 const kebab = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 export function AdminContent() {

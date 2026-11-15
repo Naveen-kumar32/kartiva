@@ -53,10 +53,30 @@ export async function getCategoryDirectory() {
   return mockDelay(roots, 120);
 }
 
+const SPOTLIGHT_CATEGORY = "printing-xerox"; // the client's own print business — spotlighted under the hero banner
+
+/** Printing & Xerox block for the homepage (Admin → Website content → Home page can switch it off). */
+function spotlight(all) {
+  if (getDb().platform.homeSections?.printingSpotlight === false) return null;
+  const root = CATEGORIES.find((c) => c.slug === SPOTLIGHT_CATEGORY);
+  if (!root || root.isActive === false) return null;
+  const slugs = categoryWithDescendants(SPOTLIGHT_CATEGORY);
+  const products = all.filter((p) => slugs.includes(p.categorySlug));
+  if (!products.length) return null;
+  const children = CATEGORIES.filter((c) => c.parentId === root.id && c.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((c) => ({ ...c, productCount: products.filter((p) => p.categorySlug === c.slug).length })).filter((c) => c.productCount);
+  // a varied preview: take one product from each sub-category in turn (xerox, photos, flex, posters …), 6 in all
+  const queues = children.map((c) => products.filter((p) => p.categorySlug === c.slug)).sort((a, b) => b.length - a.length); // biggest ranges first
+  const picks = [];
+  while (picks.length < 6 && queues.some((q) => q.length)) queues.forEach((q) => { if (q.length && picks.length < 6) picks.push(q.shift()); });
+  return { category: root, children, productCount: products.length, products: picks.length ? picks : products.slice(0, 6) };
+}
+
 export async function getHome() {
   if (!IS_MOCK) return (await axiosInstance.get(API.HOME)).data;
   const all = publicProducts().map(withSummary).filter((p) => p.summary.totalStock > 0);
   return mockDelay({
+    spotlight: spotlight(all),
     featuredProducts: all.filter((p) => p.isFeatured).slice(0, 12),
     featuredStores: STORES.filter((s) => s.isFeatured && s.status === "approved"),
     newArrivals: [...all].sort(SORTERS.newest).slice(0, 12),

@@ -63,3 +63,16 @@ def test_admin_custom_words(demo, anon, as_user):
     assert res.status_code == 200 and get_platform()["searchWords"] == "kuzhal = sunglasses"
     assert any("sun" in n.lower() for n in names(search(anon, "kuzhal"))[:5])
     save_platform({**get_platform(), "searchWords": ""})
+
+
+def test_home_printing_spotlight_and_switch(demo, anon, as_user):
+    home = anon.get("/api/v1/home/").json()
+    assert home["rootCategories"][0]["slug"] == "printing-xerox"
+    spot = home["spotlight"]
+    assert spot["category"]["slug"] == "printing-xerox" and spot["productCount"] == 22 and spot["products"]
+    assert all(c["productCount"] > 0 for c in spot["children"])  # empty sub-categories are not shown as chips
+    admin = as_user("admin@kartiva.demo")
+    assert admin.put("/api/v1/admin-api/home-sections/", {"printingSpotlight": False}, format="json").status_code == 200
+    assert anon.get("/api/v1/home/").json()["spotlight"] is None
+    admin.put("/api/v1/admin-api/home-sections/", {"printingSpotlight": True}, format="json")
+    assert anon.get("/api/v1/home/").json()["spotlight"] is not None

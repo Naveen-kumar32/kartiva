@@ -1560,7 +1560,7 @@ export const CATEGORIES = [
     "slug": "printing-xerox",
     "name": "Printing & Xerox",
     "parentId": null,
-    "sortOrder": 7.5,
+    "sortOrder": -1,
     "showInNav": true,
     "shortName": "Printing & Xerox"
   },
