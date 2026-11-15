@@ -162,6 +162,12 @@ export function ProductDetail() {
         <ReviewList rating={product.rating} reviewCount={product.reviewCount} reviews={product.reviews} />
       </section>
 
+      {product.shopPicks && (
+        <section className="mt-10">
+          <SectionHeader title={product.shopPicks.sameStore ? EN.PRODUCT.MORE_FROM(product.shopPicks.store.name) : EN.PRODUCT.FROM_OUR_SHOP(product.shopPicks.store.name)} to={ROUTES.STORE(product.shopPicks.store.slug)} />
+          <ProductRail products={product.shopPicks.products} />
+        </section>
+      )}
       {product.related.length > 0 && (
         <section className="mt-10">
           <SectionHeader title={EN.PRODUCT.SIMILAR} to={ROUTES.CATEGORY(product.categorySlug)} />

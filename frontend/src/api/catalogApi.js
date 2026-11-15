@@ -54,10 +54,23 @@ export async function getCategoryDirectory() {
 }
 
 const SPOTLIGHT_CATEGORY = "printing-xerox"; // the client's own print business — spotlighted under the hero banner
+const HOUSE_STORE = "lakshmi-graphics"; // the client's own print shop — first suggestion under every product
+// One admin switch (Website content → Home page → Printing & Xerox spotlight) controls every house-shop promotion.
+const housePromoOn = () => getDb().platform.homeSections?.printingSpotlight !== false;
+
+/** A varied preview: one product from each sub-category in turn (biggest ranges first), n in all. */
+function varied(products, n = 6) {
+  const groups = new Map();
+  products.forEach((p) => groups.set(p.categorySlug, [...(groups.get(p.categorySlug) ?? []), p]));
+  const queues = [...groups.values()].sort((a, b) => b.length - a.length);
+  const picks = [];
+  while (picks.length < n && queues.some((q) => q.length)) queues.forEach((q) => { if (q.length && picks.length < n) picks.push(q.shift()); });
+  return picks;
+}
 
 /** Printing & Xerox block for the homepage (Admin → Website content → Home page can switch it off). */
 function spotlight(all) {
-  if (getDb().platform.homeSections?.printingSpotlight === false) return null;
+  if (!housePromoOn()) return null;
   const root = CATEGORIES.find((c) => c.slug === SPOTLIGHT_CATEGORY);
   if (!root || root.isActive === false) return null;
   const slugs = categoryWithDescendants(SPOTLIGHT_CATEGORY);
@@ -65,11 +78,7 @@ function spotlight(all) {
   if (!products.length) return null;
   const children = CATEGORIES.filter((c) => c.parentId === root.id && c.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((c) => ({ ...c, productCount: products.filter((p) => p.categorySlug === c.slug).length })).filter((c) => c.productCount);
-  // a varied preview: take one product from each sub-category in turn (xerox, photos, flex, posters …), 6 in all
-  const queues = children.map((c) => products.filter((p) => p.categorySlug === c.slug)).sort((a, b) => b.length - a.length); // biggest ranges first
-  const picks = [];
-  while (picks.length < 6 && queues.some((q) => q.length)) queues.forEach((q) => { if (q.length && picks.length < 6) picks.push(q.shift()); });
-  return { category: root, children, productCount: products.length, products: picks.length ? picks : products.slice(0, 6) };
+  return { category: root, children, productCount: products.length, products: varied(products) };
 }
 
 export async function getHome() {
@@ -150,9 +159,20 @@ export async function getProduct(slug) {
   if (!IS_MOCK) return (await axiosInstance.get(API.PRODUCT(slug))).data;
   const product = PRODUCTS.find((p) => p.slug === slug);
   if (!product || !isPublicProduct(product)) throw Object.assign(new Error("Not found"), { response: { data: { detail: "Product not found." }, status: 404 } });
-  const related = publicProducts().filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id).slice(0, 12).map(withSummary);
+  const all = publicProducts().map(withSummary);
+  const related = all.filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
+    .sort((a, b) => (a.storeSlug !== HOUSE_STORE) - (b.storeSlug !== HOUSE_STORE)).slice(0, 12); // the house print shop first
   const hidden = getDb().hiddenReviews;
-  return mockDelay({ ...withSummary(product), related, reviews: buildReviews(product).filter((rv) => !hidden.includes(rv.id)) });
+  return mockDelay({ ...withSummary(product), related, reviews: buildReviews(product).filter((rv) => !hidden.includes(rv.id)), shopPicks: shopPicks(all, product, related) });
+}
+
+/** First suggestion row under every product: the house print shop's products (varied, not repeating what's on screen). */
+function shopPicks(all, product, related) {
+  const house = getStore(HOUSE_STORE);
+  if (!housePromoOn() || house?.status !== "approved") return null;
+  const seen = new Set([product.id, ...related.map((p) => p.id)]);
+  const own = all.filter((p) => p.storeSlug === HOUSE_STORE && !seen.has(p.id) && p.summary.totalStock > 0);
+  return own.length ? { products: varied(own), sameStore: product.storeSlug === HOUSE_STORE, store: house } : null;
 }
 
 export async function checkDelivery(product, pincode) {

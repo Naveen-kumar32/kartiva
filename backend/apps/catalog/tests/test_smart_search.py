@@ -76,3 +76,19 @@ def test_home_printing_spotlight_and_switch(demo, anon, as_user):
     assert anon.get("/api/v1/home/").json()["spotlight"] is None
     admin.put("/api/v1/admin-api/home-sections/", {"printingSpotlight": True}, format="json")
     assert anon.get("/api/v1/home/").json()["spotlight"] is not None
+
+
+def test_print_shop_is_the_first_suggestion_under_every_product(demo, anon, as_user):
+    from apps.catalog.models import Product
+    other = Product.objects.exclude(store_slug="lakshmi-graphics").filter(status="active").first().data
+    page = anon.get(f"/api/v1/products/{other['slug']}/").json()
+    picks = page["shopPicks"]
+    assert picks and not picks["sameStore"] and picks["store"]["slug"] == "lakshmi-graphics"
+    assert len(picks["products"]) == 6 and all(p["storeSlug"] == "lakshmi-graphics" for p in picks["products"])
+    assert len({p["categorySlug"] for p in picks["products"]}) >= 5  # a varied mix, not six of one kind
+    own = Product.objects.get(pk=195).data  # B&W xerox
+    page = anon.get(f"/api/v1/products/{own['slug']}/").json()
+    shown = {p["id"] for p in page["related"]} | {195}
+    assert page["shopPicks"]["sameStore"] and not shown & {p["id"] for p in page["shopPicks"]["products"]}  # no repeats
+    as_user("admin@kartiva.demo").put("/api/v1/admin-api/home-sections/", {"printingSpotlight": False}, format="json")
+    assert anon.get(f"/api/v1/products/{other['slug']}/").json()["shopPicks"] is None

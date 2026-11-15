@@ -166,11 +166,31 @@ def category_directory():
 
 
 SPOTLIGHT_CATEGORY = "printing-xerox"  # the client's own print business — spotlighted under the hero banner
+HOUSE_STORE = "lakshmi-graphics"  # the client's own print shop — first suggestion under every product
+
+
+def _house_promo_on():
+    """One admin switch (Website content → Home page → Printing & Xerox spotlight) controls every house-shop promotion."""
+    return (get_platform().get("homeSections") or {}).get("printingSpotlight") is not False
+
+
+def _varied(products, n=6):
+    """A varied preview: one product from each sub-category in turn (biggest ranges first), n in all."""
+    groups = {}
+    for p in products:
+        groups.setdefault(p.get("categorySlug"), []).append(p)
+    queues = sorted(groups.values(), key=len, reverse=True)
+    picks = []
+    while len(picks) < n and any(queues):
+        for q in queues:
+            if q and len(picks) < n:
+                picks.append(q.pop(0))
+    return picks
 
 
 def _spotlight(cat, allp, active):
     """Printing & Xerox block for the homepage (Admin → Website content → Home page can switch it off)."""
-    if (get_platform().get("homeSections") or {}).get("printingSpotlight") is False:
+    if not _house_promo_on():
         return None
     root = cat.cat_by_slug.get(SPOTLIGHT_CATEGORY)
     if not root or root.get("isActive") is False:
@@ -181,15 +201,8 @@ def _spotlight(cat, allp, active):
         return None
     children = sorted([c for c in active if c.get("parentId") == root.get("id")], key=_sort_order)
     counts = {c["slug"]: sum(1 for p in products if p.get("categorySlug") == c["slug"]) for c in children}
-    # a varied preview: take one product from each sub-category in turn (xerox, photos, flex, posters …), 6 in all
-    queues = sorted(([p for p in products if p.get("categorySlug") == c["slug"]] for c in children), key=len, reverse=True)  # biggest ranges first
-    picks = []
-    while len(picks) < 6 and any(queues):
-        for q in queues:
-            if q and len(picks) < 6:
-                picks.append(q.pop(0))
     return {"category": root, "children": [{**c, "productCount": counts[c["slug"]]} for c in children if counts[c["slug"]]],
-            "productCount": len(products), "products": picks or products[:6]}
+            "productCount": len(products), "products": _varied(products)}
 
 
 def home():
@@ -316,8 +329,22 @@ def product_detail(slug):
     if not row or not cat.is_public(row.data):
         return None
     product = row.data
-    related = [cat.with_summary(p) for p in cat.public_products() if p.get("categorySlug") == product.get("categorySlug") and p.get("id") != product.get("id")][:12]
-    return {**cat.with_summary(product), "related": related, "reviews": reviews_for(product)}
+    allp = [cat.with_summary(p) for p in cat.public_products()]
+    related = [p for p in allp if p.get("categorySlug") == product.get("categorySlug") and p.get("id") != product.get("id")]
+    related = sorted(related, key=lambda p: p.get("storeSlug") != HOUSE_STORE)[:12]  # the house print shop first
+    return {**cat.with_summary(product), "related": related, "reviews": reviews_for(product), "shopPicks": _shop_picks(cat, allp, product, related)}
+
+
+def _shop_picks(cat, allp, product, related):
+    """First suggestion row under every product: the house print shop's products (varied, not repeating what's on screen)."""
+    house = cat.stores.get(HOUSE_STORE)
+    if not _house_promo_on() or not house or house.get("status") != "approved":
+        return None
+    seen = {product.get("id"), *(p.get("id") for p in related)}
+    own = [p for p in allp if p.get("storeSlug") == HOUSE_STORE and p.get("id") not in seen and p["summary"]["totalStock"] > 0]
+    if not own:
+        return None
+    return {"products": _varied(own), "sameStore": product.get("storeSlug") == HOUSE_STORE, "store": house}
 
 
 def delivery_options(slug, pincode):
