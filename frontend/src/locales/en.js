@@ -1278,6 +1278,7 @@ export const EN = {
       REJECT_TITLE: "Reject document",
       SEARCH: "Search store or GSTIN…",
       SHOW_DOCS: (n) => `Show ${n} verified documents`,
+      SHOW_LESS: "Show less",
       SIMULATED: "Simulated",
       SIZE_KB: (kb) => `${kb} KB`,
       STATE_CHECK: "State code",

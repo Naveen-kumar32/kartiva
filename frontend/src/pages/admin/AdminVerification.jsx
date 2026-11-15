@@ -23,6 +23,8 @@ const TABS = [
   ["not_submitted", (r) => r.store.kycStatus === "not_submitted"],
 ];
 
+// Fully verified sellers start folded up (nothing to review); they can be opened and folded again.
+const collapsible = (store, docs) => docs.length > 0 && store.kycStatus === "verified" && !docs.some((d) => d.status === "pending");
 const hasFile = (d) => Boolean(d.fileId || d.fileUrl || d.fileData);
 const saveBlob = (blob, name) => {
   const url = URL.createObjectURL(blob);
@@ -118,7 +120,7 @@ export function AdminVerification() {
 
           {(checks[store.slug] ?? store.gstCheck) && <GstPortalCard result={checks[store.slug] ?? store.gstCheck} />}
 
-          {docs.length > 0 && store.kycStatus === "verified" && !docs.some((d) => d.status === "pending") && !expanded[store.slug] ? (
+          {collapsible(store, docs) && !expanded[store.slug] ? (
             <button className="mt-3 text-sm font-semibold text-brand-700 hover:underline" onClick={() => setExpanded((e) => ({ ...e, [store.slug]: true }))} type="button">{P.SHOW_DOCS(docs.length)}</button>
           ) : docs.length === 0 ? <p className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-muted">{P.NO_DOCS}</p> : (
             <div className="relative -mx-5 mt-4 overflow-x-auto">
@@ -152,6 +154,9 @@ export function AdminVerification() {
                   ))}
                 </tbody>
               </table>
+              {collapsible(store, docs) && (
+                <button className="mx-5 mt-3 text-sm font-semibold text-brand-700 hover:underline" onClick={() => setExpanded((e) => ({ ...e, [store.slug]: false }))} type="button">{P.SHOW_LESS}</button>
+              )}
             </div>
           )}
         </Panel>
