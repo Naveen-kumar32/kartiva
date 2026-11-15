@@ -3,6 +3,7 @@ from apps.core.services import get_platform
 from apps.market.models import KycDocument
 
 from .models import Category, Product, Review, Store
+from .smart_search import Searcher
 
 PAGE_SIZE = 24
 
@@ -43,6 +44,10 @@ class Catalog:
                     walk(child.get("slug"))
         walk(slug)
         return result
+
+    def category_names(self, slug):
+        """"Smartphones Electronics" — the category and its parents, so products are found by category words too."""
+        return " ".join(c.get("name") or "" for c in self.trail(slug))
 
     def trail(self, slug):
         trail, current, seen = [], self.cat_by_slug.get(slug), set()
@@ -175,22 +180,6 @@ def home():
     }
 
 
-def _search_score(p, terms):
-    hay = {"brand": (p.get("brand") or "").lower(), "cat": p.get("categorySlug") or "", "desc": (p.get("description") or "").lower(),
-           "name": (p.get("name") or "").lower(), "store": ((p.get("store") or {}).get("name") or "").lower()}
-    score = 0
-    for t in terms:
-        if t in hay["name"]:
-            score += 5
-        elif t in hay["brand"] or t in hay["store"] or t in hay["cat"]:
-            score += 3
-        elif t in hay["desc"]:
-            score += 1
-        else:
-            return 0
-    return score
-
-
 def _count_by(lst, key):
     out = {}
     for item in lst:
@@ -220,9 +209,13 @@ def products(params):
     premium, attrs{name: [values]}, sort, page → {count, facets, page, pageCount, results}."""
     cat = Catalog()
     lst = [cat.with_summary(p) for p in cat.public_products()]
-    terms = [t for t in (params.get("q") or "").lower().split() if t]
-    if terms:
-        lst = [p for p in ({**p, "score": _search_score(p, terms)} for p in lst) if p["score"] > 0]
+    search = None
+    q = str(params.get("q") or "").strip()
+    if q:
+        # Smart search: typos, sound-alikes, Tamil / Tanglish / Hindi words, intent words, related fallback (smart_search.py)
+        found = Searcher(lst, category_names=cat.category_names, custom_words=get_platform().get("searchWords") or "").search(q)
+        lst = [{**p, "score": score} for p, score in found["results"]]
+        search = {"corrected": found["corrected"], "mode": found["mode"], "query": q, "sortHint": found["sortHint"]}
     if params.get("category"):
         slugs = cat.with_descendants(params["category"])
         lst = [p for p in lst if p.get("categorySlug") in slugs]
@@ -271,6 +264,8 @@ def products(params):
             lst = [p for p in lst if any((v.get("attributes") or {}).get(name) in values for v in p.get("variants") or [])]
 
     sort = params.get("sort") or "relevance"
+    if sort == "relevance" and search and search["sortHint"]:
+        sort = search["sortHint"]  # "cheap phone" → lowest price first, "pudhusa watch" → newest first
     if sort == "relevance":
         # Default order: best search match first, then the most recently added products on top.
         lst.sort(key=lambda p: (p.get("score") or 0, p.get("createdAt") or ""), reverse=True)
@@ -284,7 +279,7 @@ def products(params):
         page = 1
     count = len(lst)
     return {"count": count, "facets": facets, "page": page, "pageCount": max(1, -(-count // PAGE_SIZE)),
-            "results": lst[(page - 1) * PAGE_SIZE: page * PAGE_SIZE]}
+            "results": lst[(page - 1) * PAGE_SIZE: page * PAGE_SIZE], "search": search}
 
 
 def product_detail(slug):

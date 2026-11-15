@@ -1,7 +1,8 @@
-import { MapPin, Mail, Navigation, ShieldCheck } from "lucide-react";
+import { Code2, MapPin, Mail, Navigation, Phone, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import { DEVELOPER } from "@/constants";
 import { CMS_CONTENT, PLATFORM } from "@/data";
 import { EN, ROUTES } from "@/locales";
 
@@ -78,21 +79,47 @@ export function Footer() {
 
       <FindUs />
 
+      {/* Legal links + payment methods */}
       <div className="border-t border-white/10">
-        <div className="mx-auto grid max-w-[1440px] gap-4 px-4 py-6 text-xs text-white/60 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
-          <div className="space-y-2">
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-              {LEGAL.map(([label, to]) => <li key={label}><Link className="hover:text-white hover:underline" to={to}>{label}</Link></li>)}
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <nav aria-label={F.POLICY}>
+            <ul className="-mx-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
+              {LEGAL.map(([label, to]) => (
+                <li key={label}><Link className="block rounded-md px-2 py-1 text-white/70 hover:bg-white/10 hover:text-white" to={to}>{label}</Link></li>
+              ))}
             </ul>
-            <p>{T.COMPANY_LINE(PLATFORM)}</p>
-            <p>{PLATFORM.supportEmail} · {PLATFORM.supportPhone} · © 2026 {PLATFORM.legalName}. {F.RIGHTS}</p>
+          </nav>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-white/50">{T.PAY_WITH}</span>
+            {PAYMENTS.map((p) => <span className="rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-brand-900" key={p}>{p}</span>)}
           </div>
-          <div>
-            <p className="mb-1.5 font-semibold text-white/80">{T.PAY_WITH}</p>
-            <ul className="flex flex-wrap gap-1.5">
-              {PAYMENTS.map((p) => <li className="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-brand-900" key={p}>{p}</li>)}
-            </ul>
-          </div>
+        </div>
+      </div>
+
+      {/* Company details */}
+      <div className="border-t border-white/10">
+        <dl className="mx-auto grid max-w-[1440px] gap-x-8 gap-y-3 px-4 py-5 text-xs sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_2fr_1fr_1.2fr] lg:px-8">
+          {[[F.ABOUT, PLATFORM.legalName], [F.REGISTERED_OFFICE, PLATFORM.address], ["GSTIN", PLATFORM.gstin], ["CIN", PLATFORM.cin]].filter(([, v]) => v).map(([k, v]) => (
+            <div key={k}>
+              <dt className="mb-0.5 font-semibold uppercase tracking-wide text-white/40">{k}</dt>
+              <dd className="break-words text-white/75">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {/* Copyright + developer credit */}
+      <div className="bg-black/20">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-4 py-4 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>{F.COPYRIGHT(PLATFORM.legalName)}</p>
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Code2 aria-hidden className="size-3.5 text-accent-400" />
+            <span>{F.DEVELOPED_BY} <span className="font-semibold text-white">{DEVELOPER.name}</span></span>
+            <span aria-hidden className="hidden text-white/25 sm:inline">•</span>
+            <a aria-label={F.CALL_DEVELOPER(DEVELOPER.name, DEVELOPER.phone)} className="inline-flex items-center gap-1 font-semibold text-white hover:text-accent-400" href={`tel:${DEVELOPER.tel}`}>
+              <Phone aria-hidden className="size-3.5" />{DEVELOPER.phone}
+            </a>
+          </p>
         </div>
       </div>
     </footer>

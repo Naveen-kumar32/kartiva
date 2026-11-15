@@ -540,10 +540,11 @@ export async function savePlatformSettings(patch) {
   return run(() => {
     const p = getDb().platform;
     // Whitelist: only known settings keys can be written; internal keys (idempotency, homeSections …) are not editable here.
-    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website", "youtubeUrl"]);
+    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "searchWords", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website", "youtubeUrl"]);
     const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => EDITABLE.has(k)));
     if (clean.youtubeUrl && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(clean.youtubeUrl)) throw apiError("YouTube link must start with https://www.youtube.com/ or https://youtu.be/");
     if (clean.mapLocation != null) clean.mapLocation = String(clean.mapLocation).trim().slice(0, 200);
+    if (clean.searchWords != null) clean.searchWords = String(clean.searchWords).slice(0, 20000);
     const changed = Object.keys(clean).filter((k) => JSON.stringify(p[k]) !== JSON.stringify(clean[k]));
     Object.assign(p, clean);
     audit("settings.updated", "Platform settings", changed.length ? `Changed: ${changed.join(", ")}` : "No changes");

@@ -1,6 +1,6 @@
-import { ClipboardList, SearchX, SlidersHorizontal } from "lucide-react";
+import { ArrowDownWideNarrow, ClipboardList, SearchX, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { getProducts, getSlotAds } from "@/api";
 import {
@@ -105,6 +105,7 @@ export function Listing() {
               </div>
             </>
           )}
+          {!loading && data?.search && <SearchNotice search={data.search} sort={filters.sort} />}
           {!loading && data?.count > 0 && (
             <>
               <ProductGrid products={data.results} sponsored={sponsoredProducts} />
@@ -120,5 +121,31 @@ export function Listing() {
         </div>
       </Drawer>
     </Container>
+  );
+}
+
+/** What smart search did with the query: spelling fixed, closest matches, related products, or a sort from words like "cheap". */
+function SearchNotice({ search, sort }) {
+  const L = EN.LISTING;
+  const sorted = (!sort || sort === "relevance") && search.sortHint ? L.SORT_HINT[search.sortHint] : null;
+  if (!search.corrected && search.mode !== "partial" && search.mode !== "related" && !sorted) return null;
+  return (
+    <div className="mb-4 space-y-1 rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900" role="status">
+      {search.corrected && (
+        <p className="flex flex-wrap items-center gap-1.5">
+          <Sparkles aria-hidden className="size-4 text-brand-600" />{L.SEARCH_CORRECTED}
+          <Link className="font-bold underline-offset-2 hover:underline" to={ROUTES.SEARCH(search.corrected)}>{search.corrected}</Link>
+          <span className="text-brand-800/70">· {L.SEARCH_YOU_TYPED(search.query)}</span>
+        </p>
+      )}
+      {search.mode === "partial" && <p className="flex items-center gap-1.5"><Sparkles aria-hidden className="size-4 text-brand-600" />{L.SEARCH_PARTIAL(search.query)}</p>}
+      {search.mode === "related" && (
+        <p className="flex flex-wrap items-center gap-1.5">
+          <SearchX aria-hidden className="size-4 text-brand-600" />{L.SEARCH_RELATED(search.query)}
+          <Link className="font-semibold text-brand-700 underline" to={ROUTES.POST_REQUIREMENT}>{EN.BUYER_HUB.NAV.POST_REQUIREMENT}</Link>
+        </p>
+      )}
+      {sorted && <p className="flex items-center gap-1.5"><ArrowDownWideNarrow aria-hidden className="size-4 text-brand-600" />{L.SEARCH_SORTED(sorted)}</p>}
+    </div>
   );
 }

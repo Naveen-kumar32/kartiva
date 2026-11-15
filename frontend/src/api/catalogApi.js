@@ -3,7 +3,8 @@ import { PAGE_SIZE } from "@/constants";
 import { CATEGORIES, PRODUCTS, STORES, buildReviews } from "@/data";
 
 import { getDb } from "./mockDb";
-import { categoryWithDescendants, getStore, isServiceable, mockDelay, priceTiersOf, summarizeProduct } from "@/utils";
+import { categoryTrail, categoryWithDescendants, getStore, isServiceable, mockDelay, priceTiersOf, summarizeProduct } from "@/utils";
+import { createSearcher } from "@/utils/smartSearch";
 
 // Storefront only shows active, non-deleted products from approved stores in active categories.
 export const isPublicProduct = (p) => {
@@ -28,17 +29,8 @@ const SORTERS = {
   rating: (a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount,
 };
 
-function searchScore(p, terms) {
-  const hay = { brand: p.brand.toLowerCase(), cat: p.categorySlug, desc: p.description.toLowerCase(), name: p.name.toLowerCase(), store: p.store.name.toLowerCase() };
-  let score = 0;
-  for (const t of terms) {
-    if (hay.name.includes(t)) score += 5;
-    else if (hay.brand.includes(t) || hay.store.includes(t) || hay.cat.includes(t)) score += 3;
-    else if (hay.desc.includes(t)) score += 1;
-    else return 0; // every term must match somewhere
-  }
-  return score;
-}
+/** "Smartphones Electronics" — the category and its parents, so products are found by category words too. */
+export const categoryNames = (slug) => categoryTrail(slug).map((c) => c.name).join(" ");
 
 export async function getCategories() {
   if (!IS_MOCK) return (await axiosInstance.get(API.CATEGORIES)).data;
@@ -80,8 +72,13 @@ export async function getProducts(params = {}) {
   if (!IS_MOCK) return (await axiosInstance.get(API.PRODUCTS, { params: toQuery(params) })).data;
   const { attrs = {}, brands = [], bulk, businessTypes = [], category, inStock, maxPrice, minPrice, minRating, page = 1, premium, q = "", sellers = [], sort = "relevance", store, verified } = params;
   let list = publicProducts().map(withSummary);
-  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length) list = list.map((p) => ({ ...p, score: searchScore(p, terms) })).filter((p) => p.score > 0);
+  let search = null;
+  if (q.trim()) {
+    // Smart search: typos, sound-alikes, Tamil / Tanglish / Hindi words, intent words, related fallback (utils/smartSearch.js)
+    const found = createSearcher(list, { categoryNames, customWords: getDb().platform.searchWords }).search(q);
+    list = found.results.map(({ p, score }) => ({ ...p, score }));
+    search = { corrected: found.corrected, mode: found.mode, query: q.trim(), sortHint: found.sortHint };
+  }
   if (category) {
     const slugs = categoryWithDescendants(category);
     list = list.filter((p) => slugs.includes(p.categorySlug));
@@ -118,13 +115,15 @@ export async function getProducts(params = {}) {
     if (values?.length) list = list.filter((p) => p.variants.some((v) => values.includes(v.attributes[name])));
   });
 
+  // "cheap phone" → lowest price first, "pudhusa watch" → newest first (only while the shopper hasn't picked a sort)
+  const order = sort === "relevance" && search?.sortHint ? search.sortHint : sort;
   // Default order: best search match first, then the most recently added products on top.
-  if (sort === "relevance") list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || SORTERS.newest(a, b));
-  else list.sort(SORTERS[sort] ?? SORTERS.popular);
+  if (order === "relevance") list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || SORTERS.newest(a, b));
+  else list.sort(SORTERS[order] ?? SORTERS.popular);
 
   const count = list.length;
   const results = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  return mockDelay({ count, facets, page, pageCount: Math.max(1, Math.ceil(count / PAGE_SIZE)), results });
+  return mockDelay({ count, facets, page, pageCount: Math.max(1, Math.ceil(count / PAGE_SIZE)), results, search });
 }
 
 export async function getProduct(slug) {

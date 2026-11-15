@@ -2,7 +2,7 @@ import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 import { getPlatformSettings, resetDemoData, savePlatformSettings } from "@/api";
-import { Button, ConfirmDialog, FormInput, PageHeader, PageLoader, Panel, Toggle } from "@/components";
+import { Button, ConfirmDialog, FormInput, FormTextarea, PageHeader, PageLoader, Panel, Toggle } from "@/components";
 import { useAsync, useDocumentTitle } from "@/hooks";
 import { EN } from "@/locales";
 import { getErrorMessage } from "@/utils/getErrorMessage";
@@ -69,6 +69,10 @@ function SettingsForm({ initial }) {
           {field("tcsRate", A.FIELD_TCS, { step: "0.01", type: "number" })}
           {field("tdsRate", A.FIELD_TDS, { step: "0.01", type: "number" })}
         </div>
+      </Panel>
+      <Panel title={T.SEARCH_WORDS}>
+        <p className="mb-3 text-sm text-muted">{T.SEARCH_WORDS_HINT}</p>
+        <FormTextarea label={T.SEARCH_WORDS_LABEL} name="searchWords" onChange={set("searchWords")} placeholder={T.SEARCH_WORDS_PLACEHOLDER} rows={6} value={form.searchWords ?? ""} />
       </Panel>
       <Panel title={A.SETTINGS_COD}>
         <SwitchRow checked={form.codEnabled} description={T.COD_HINT} label={A.ENABLE_COD} onChange={(v) => setForm((f) => ({ ...f, codEnabled: v }))} />

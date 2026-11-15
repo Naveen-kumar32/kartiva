@@ -1,0 +1,1002 @@
+{
+ "intent": {
+  "newest": [
+   "new",
+   "newest",
+   "latest",
+   "recent",
+   "recently added",
+   "pudhusa",
+   "puthusa",
+   "pudhu",
+   "puthu",
+   "pudhiya",
+   "naya",
+   "naye",
+   "nayi",
+   "just arrived",
+   "new arrival",
+   "new arrivals"
+  ],
+  "popular": [
+   "popular",
+   "trending",
+   "famous",
+   "most sold",
+   "bestseller",
+   "best seller"
+  ],
+  "price_asc": [
+   "cheap",
+   "cheapest",
+   "budget",
+   "affordable",
+   "low price",
+   "lowest price",
+   "kammi",
+   "kammi vilai",
+   "kammiyana",
+   "korainjathu",
+   "sasta",
+   "sastha",
+   "saste",
+   "kam daam",
+   "discount",
+   "offer"
+  ],
+  "price_desc": [
+   "costly",
+   "expensive",
+   "premium",
+   "luxury",
+   "high end",
+   "highend",
+   "mehenga"
+  ],
+  "rating": [
+   "best",
+   "top rated",
+   "highly rated",
+   "nalla",
+   "nallathu",
+   "accha",
+   "achha",
+   "badhiya"
+  ]
+ },
+ "stopwords": [
+  "a",
+  "aa",
+  "above",
+  "add",
+  "added",
+  "adhella",
+  "adhu",
+  "ah",
+  "an",
+  "and",
+  "anga",
+  "any",
+  "athella",
+  "athu",
+  "below",
+  "buy",
+  "chahiye",
+  "chaiye",
+  "dekho",
+  "dena",
+  "dikha",
+  "dikhao",
+  "do",
+  "edhu",
+  "ella",
+  "ellam",
+  "ellame",
+  "enakku",
+  "enaku",
+  "enna",
+  "ennaku",
+  "ennala",
+  "ennalam",
+  "ethu",
+  "find",
+  "for",
+  "get",
+  "give",
+  "hai",
+  "ho",
+  "i",
+  "idhu",
+  "in",
+  "inga",
+  "iruka",
+  "irukka",
+  "irukku",
+  "iruku",
+  "ithu",
+  "ka",
+  "kaattu",
+  "kaatu",
+  "kattu",
+  "ke",
+  "ki",
+  "kitna",
+  "kku",
+  "kodu",
+  "konjam",
+  "ku",
+  "kudu",
+  "kya",
+  "la",
+  "le",
+  "me",
+  "muje",
+  "mujhe",
+  "my",
+  "need",
+  "of",
+  "on",
+  "or",
+  "oru",
+  "paakalam",
+  "paaru",
+  "pakkalam",
+  "paninga",
+  "panirukanga",
+  "panirukangalo",
+  "panni",
+  "pannunga",
+  "paru",
+  "please",
+  "pls",
+  "plz",
+  "price",
+  "rate",
+  "sari",
+  "seri",
+  "show",
+  "some",
+  "the",
+  "to",
+  "under",
+  "vala",
+  "veenum",
+  "vela",
+  "venam",
+  "vendum",
+  "venum",
+  "vilai",
+  "vilaiyil",
+  "wala",
+  "wali",
+  "want",
+  "with",
+  "yenna"
+ ],
+ "synonyms": {
+  "aam": [
+   "mango"
+  ],
+  "aapil": [
+   "apple"
+  ],
+  "ac": [
+   "air conditioner"
+  ],
+  "aircon": [
+   "air conditioner"
+  ],
+  "airpods": [
+   "earbuds",
+   "airpods"
+  ],
+  "aloo": [
+   "potato"
+  ],
+  "alu": [
+   "potato"
+  ],
+  "anda": [
+   "eggs"
+  ],
+  "ande": [
+   "eggs"
+  ],
+  "angoothi": [
+   "ring"
+  ],
+  "arisi": [
+   "rice"
+  ],
+  "attar": [
+   "perfume"
+  ],
+  "back cover": [
+   "case"
+  ],
+  "banner": [
+   "flex",
+   "banner"
+  ],
+  "bartan": [
+   "utensils"
+  ],
+  "basmati": [
+   "rice"
+  ],
+  "batti": [
+   "lamp",
+   "light"
+  ],
+  "bike": [
+   "bike",
+   "motorcycle",
+   "scooter"
+  ],
+  "bommai": [
+   "toy",
+   "toys"
+  ],
+  "bulb": [
+   "light",
+   "bulb"
+  ],
+  "cell": [
+   "phone"
+  ],
+  "cell phone": [
+   "phone"
+  ],
+  "cellphone": [
+   "phone"
+  ],
+  "chai": [
+   "tea"
+  ],
+  "chammach": [
+   "spoon"
+  ],
+  "chappal": [
+   "slippers",
+   "sandals",
+   "flip flops"
+  ],
+  "chargar": [
+   "charger"
+  ],
+  "charger": [
+   "charger"
+  ],
+  "chashma": [
+   "sunglasses",
+   "spectacles"
+  ],
+  "chaval": [
+   "rice"
+  ],
+  "chawal": [
+   "rice"
+  ],
+  "cheeni": [
+   "sugar"
+  ],
+  "chini": [
+   "sugar"
+  ],
+  "chudi": [
+   "bangles"
+  ],
+  "computer": [
+   "laptop",
+   "computer"
+  ],
+  "cooling glass": [
+   "sunglasses"
+  ],
+  "cover": [
+   "case",
+   "cover"
+  ],
+  "cycle": [
+   "bicycle",
+   "cycle"
+  ],
+  "daal": [
+   "dal"
+  ],
+  "doodh": [
+   "milk"
+  ],
+  "dress": [
+   "dress",
+   "dresses"
+  ],
+  "dudh": [
+   "milk"
+  ],
+  "earphone": [
+   "earphones",
+   "headphones",
+   "earbuds"
+  ],
+  "ennai": [
+   "oil"
+  ],
+  "ezhuthukol": [
+   "pen"
+  ],
+  "flex": [
+   "flex",
+   "banner"
+  ],
+  "fridge": [
+   "refrigerator"
+  ],
+  "frock": [
+   "dress"
+  ],
+  "gaadi": [
+   "vehicle",
+   "bike",
+   "car"
+  ],
+  "gadi": [
+   "watch"
+  ],
+  "gadi bike": [
+   "bike"
+  ],
+  "gehna": [
+   "jewellery"
+  ],
+  "gend": [
+   "ball"
+  ],
+  "ghadi": [
+   "watch"
+  ],
+  "goggles": [
+   "sunglasses",
+   "glasses"
+  ],
+  "haldi": [
+   "turmeric"
+  ],
+  "handbag": [
+   "bag",
+   "handbag"
+  ],
+  "headset": [
+   "headphones"
+  ],
+  "ice cream": [
+   "ice cream"
+  ],
+  "id card": [
+   "id card"
+  ],
+  "invitation": [
+   "invitations"
+  ],
+  "itar": [
+   "perfume",
+   "attar"
+  ],
+  "jerox": [
+   "xerox"
+  ],
+  "jewelry": [
+   "jewellery"
+  ],
+  "jhola": [
+   "bag"
+  ],
+  "jhumka": [
+   "earrings"
+  ],
+  "joota": [
+   "shoes"
+  ],
+  "joote": [
+   "shoes"
+  ],
+  "juice": [
+   "juice"
+  ],
+  "juta": [
+   "shoes"
+  ],
+  "kaafi": [
+   "coffee"
+  ],
+  "kaapi": [
+   "coffee"
+  ],
+  "kadaai": [
+   "kadai",
+   "pan"
+  ],
+  "kadai": [
+   "kadai",
+   "pan"
+  ],
+  "kadigaram": [
+   "watch"
+  ],
+  "kadikaram": [
+   "watch"
+  ],
+  "kaipesi": [
+   "phone",
+   "smartphone"
+  ],
+  "kalisan": [
+   "trousers"
+  ],
+  "kameez": [
+   "shirt"
+  ],
+  "kammal": [
+   "earrings"
+  ],
+  "kanda": [
+   "onion"
+  ],
+  "kanini": [
+   "laptop",
+   "computer"
+  ],
+  "kannadi": [
+   "sunglasses",
+   "mirror",
+   "spectacles"
+  ],
+  "kapi": [
+   "coffee"
+  ],
+  "karandi": [
+   "spoon",
+   "ladle"
+  ],
+  "katori": [
+   "bowl"
+  ],
+  "kattil": [
+   "bed"
+  ],
+  "kela": [
+   "banana"
+  ],
+  "kheera": [
+   "cucumber"
+  ],
+  "khilona": [
+   "toy"
+  ],
+  "kinnam": [
+   "bowl"
+  ],
+  "kitab": [
+   "book"
+  ],
+  "kozhi": [
+   "chicken"
+  ],
+  "kozhi kari": [
+   "chicken"
+  ],
+  "kulfi": [
+   "ice cream"
+  ],
+  "kursi": [
+   "chair"
+  ],
+  "kurta": [
+   "kurta",
+   "shirt"
+  ],
+  "laminate": [
+   "lamination"
+  ],
+  "lamination": [
+   "lamination"
+  ],
+  "maambazham": [
+   "mango"
+  ],
+  "machhli": [
+   "fish"
+  ],
+  "machli": [
+   "fish"
+  ],
+  "mambazham": [
+   "mango"
+  ],
+  "manjal": [
+   "turmeric"
+  ],
+  "mattai": [
+   "bat"
+  ],
+  "meen": [
+   "fish"
+  ],
+  "mesa": [
+   "table"
+  ],
+  "mesai": [
+   "table"
+  ],
+  "methai": [
+   "mattress"
+  ],
+  "metthai": [
+   "mattress"
+  ],
+  "milagai": [
+   "chilli"
+  ],
+  "milagu": [
+   "pepper"
+  ],
+  "mirchi": [
+   "chilli"
+  ],
+  "mobail": [
+   "phone"
+  ],
+  "mobile": [
+   "phone",
+   "smartphone"
+  ],
+  "mobile cover": [
+   "case"
+  ],
+  "mothiram": [
+   "ring"
+  ],
+  "murga": [
+   "chicken"
+  ],
+  "murgi": [
+   "chicken"
+  ],
+  "muttai": [
+   "egg",
+   "eggs"
+  ],
+  "naarkali": [
+   "chair"
+  ],
+  "nagai": [
+   "jewellery",
+   "necklace"
+  ],
+  "nagaigal": [
+   "jewellery"
+  ],
+  "namak": [
+   "salt"
+  ],
+  "narkali": [
+   "chair"
+  ],
+  "nighty": [
+   "dress"
+  ],
+  "paal": [
+   "milk"
+  ],
+  "paani": [
+   "water"
+  ],
+  "paathiram": [
+   "utensils",
+   "vessel"
+  ],
+  "pai": [
+   "bag"
+  ],
+  "palam": [
+   "fruit"
+  ],
+  "palang": [
+   "bed"
+  ],
+  "pandhu": [
+   "ball"
+  ],
+  "pani": [
+   "water"
+  ],
+  "pant": [
+   "trousers",
+   "pants"
+  ],
+  "paruppu": [
+   "dal",
+   "lentils"
+  ],
+  "passport photo": [
+   "passport"
+  ],
+  "pathiram": [
+   "utensils"
+  ],
+  "pathirikai": [
+   "invitations"
+  ],
+  "pathrikai": [
+   "invitations"
+  ],
+  "pazham": [
+   "fruit",
+   "fruits"
+  ],
+  "pena": [
+   "pen"
+  ],
+  "perfum": [
+   "fragrance",
+   "perfume"
+  ],
+  "perfume": [
+   "fragrance",
+   "perfume",
+   "eau"
+  ],
+  "phal": [
+   "fruit"
+  ],
+  "phone cover": [
+   "case"
+  ],
+  "photocopy": [
+   "xerox",
+   "photocopy"
+  ],
+  "print out": [
+   "printout"
+  ],
+  "printout": [
+   "printout",
+   "print"
+  ],
+  "pudavai": [
+   "saree"
+  ],
+  "pudvai": [
+   "saree"
+  ],
+  "purse": [
+   "bag",
+   "wallet"
+  ],
+  "puthagam": [
+   "book",
+   "notebook"
+  ],
+  "pyaaz": [
+   "onion"
+  ],
+  "pyaz": [
+   "onion"
+  ],
+  "saaru": [
+   "juice"
+  ],
+  "sabun": [
+   "soap"
+  ],
+  "sadi": [
+   "saree"
+  ],
+  "saikil": [
+   "bicycle"
+  ],
+  "sakkarai": [
+   "sugar"
+  ],
+  "sari": [
+   "saree"
+  ],
+  "sarkarai": [
+   "sugar"
+  ],
+  "sattai": [
+   "shirt"
+  ],
+  "scent": [
+   "fragrance",
+   "perfume"
+  ],
+  "scooty": [
+   "scooter"
+  ],
+  "seant": [
+   "perfume"
+  ],
+  "seb": [
+   "apple"
+  ],
+  "seruppu": [
+   "footwear",
+   "sandals",
+   "shoes"
+  ],
+  "shahad": [
+   "honey"
+  ],
+  "shampu": [
+   "shampoo"
+  ],
+  "sneakers": [
+   "shoes"
+  ],
+  "soppu": [
+   "soap"
+  ],
+  "sopu": [
+   "soap"
+  ],
+  "specs": [
+   "glasses",
+   "sunglasses"
+  ],
+  "sticker": [
+   "stickers"
+  ],
+  "t shirt": [
+   "t-shirt",
+   "tops",
+   "shirt"
+  ],
+  "tab": [
+   "tablet"
+  ],
+  "tamatar": [
+   "tomato"
+  ],
+  "tanni": [
+   "water"
+  ],
+  "tawa": [
+   "pan",
+   "tawa"
+  ],
+  "tel": [
+   "oil"
+  ],
+  "thaen": [
+   "honey"
+  ],
+  "thaila": [
+   "bag"
+  ],
+  "thakkali": [
+   "tomato"
+  ],
+  "thali": [
+   "plate"
+  ],
+  "thanneer": [
+   "water"
+  ],
+  "thanni": [
+   "water"
+  ],
+  "thattu": [
+   "plate"
+  ],
+  "thatu": [
+   "plate"
+  ],
+  "thel": [
+   "oil"
+  ],
+  "then": [
+   "honey"
+  ],
+  "theneer": [
+   "tea"
+  ],
+  "thosai kal": [
+   "pan",
+   "tawa"
+  ],
+  "trainers": [
+   "shoes"
+  ],
+  "tshirt": [
+   "t-shirt",
+   "tops",
+   "shirt"
+  ],
+  "tumbler": [
+   "glass",
+   "tumbler"
+  ],
+  "tv": [
+   "television"
+  ],
+  "uppu": [
+   "salt"
+  ],
+  "urulai": [
+   "potato"
+  ],
+  "urulaikilangu": [
+   "potato"
+  ],
+  "urulaikizhangu": [
+   "potato"
+  ],
+  "vaasanai": [
+   "perfume"
+  ],
+  "valayal": [
+   "bangles",
+   "bracelet"
+  ],
+  "vandi": [
+   "bike",
+   "vehicle",
+   "scooter"
+  ],
+  "vasanai": [
+   "perfume",
+   "fragrance"
+  ],
+  "vazhaipazham": [
+   "banana"
+  ],
+  "vazhapazham": [
+   "banana"
+  ],
+  "vellarikkai": [
+   "cucumber"
+  ],
+  "vengayam": [
+   "onion"
+  ],
+  "veshti": [
+   "dhoti"
+  ],
+  "vessel": [
+   "utensils",
+   "pan",
+   "pot"
+  ],
+  "vetti": [
+   "dhoti"
+  ],
+  "vilakku": [
+   "lamp",
+   "light"
+  ],
+  "visiting card": [
+   "card"
+  ],
+  "xerox": [
+   "xerox",
+   "photocopy"
+  ],
+  "zerox": [
+   "xerox",
+   "photocopy"
+  ],
+  "அரிசி": [
+   "rice"
+  ],
+  "உப்பு": [
+   "salt"
+  ],
+  "உருளைக்கிழங்கு": [
+   "potato"
+  ],
+  "எண்ணெய்": [
+   "oil"
+  ],
+  "கடிகாரம்": [
+   "watch"
+  ],
+  "கட்டில்": [
+   "bed"
+  ],
+  "கணினி": [
+   "laptop",
+   "computer"
+  ],
+  "கண்ணாடி": [
+   "sunglasses",
+   "mirror"
+  ],
+  "காபி": [
+   "coffee"
+  ],
+  "கைபேசி": [
+   "phone",
+   "smartphone"
+  ],
+  "கோழி": [
+   "chicken"
+  ],
+  "சட்டை": [
+   "shirt"
+  ],
+  "சர்க்கரை": [
+   "sugar"
+  ],
+  "செருப்பு": [
+   "footwear",
+   "sandals"
+  ],
+  "சோப்பு": [
+   "soap"
+  ],
+  "தக்காளி": [
+   "tomato"
+  ],
+  "தண்ணீர்": [
+   "water"
+  ],
+  "தேநீர்": [
+   "tea"
+  ],
+  "தேன்": [
+   "honey"
+  ],
+  "நகை": [
+   "jewellery"
+  ],
+  "நாற்காலி": [
+   "chair"
+  ],
+  "பந்து": [
+   "ball"
+  ],
+  "பருப்பு": [
+   "dal",
+   "lentils"
+  ],
+  "பழம்": [
+   "fruit"
+  ],
+  "பால்": [
+   "milk"
+  ],
+  "புடவை": [
+   "saree"
+  ],
+  "புத்தகம்": [
+   "book"
+  ],
+  "பை": [
+   "bag"
+  ],
+  "பொம்மை": [
+   "toys"
+  ],
+  "மீன்": [
+   "fish"
+  ],
+  "முட்டை": [
+   "eggs"
+  ],
+  "வண்டி": [
+   "vehicle",
+   "bike"
+  ],
+  "விளக்கு": [
+   "lamp",
+   "light"
+  ],
+  "வெங்காயம்": [
+   "onion"
+  ],
+  "வேட்டி": [
+   "dhoti"
+  ]
+ }
+}
