@@ -1,14 +1,14 @@
-import { ChevronDown, FileText, Package, RotateCcw, Truck, XCircle } from "lucide-react";
+import { ChevronDown, FileText, Package, PenLine, RotateCcw, Star, Truck, XCircle } from "lucide-react";
 import { useState } from "react";
 
-import { cancelMySubOrder, escalateReturn, getMyOrders, getMyReturns, requestReturn } from "@/api";
+import { cancelMySubOrder, escalateReturn, getMyOrders, getMyReturns, getMyReviews, requestReturn } from "@/api";
 import {
-  Button, Container, EmptyState, FormSelect, FormTextarea, Modal, OrderDocumentActions, PageLoader, PromptDialog, ShipmentTracker, SmartImage, StatusBadge, Tabs, Timeline,
+  Button, Container, EmptyState, FormSelect, FormTextarea, Modal, OrderDocumentActions, PageLoader, PromptDialog, ReviewModal, ShipmentTracker, SmartImage, StatusBadge, Tabs, Timeline,
 } from "@/components";
 import { PLATFORM } from "@/data";
 import { useAsync, useAuth, useDocumentTitle } from "@/hooks";
 import { EN, ROUTES } from "@/locales";
-import { getStore } from "@/utils/catalog";
+import { getProductById, getStore } from "@/utils/catalog";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { errorToast, successToast } from "@/utils/toast";
@@ -21,14 +21,17 @@ const docs = () => import("@/utils/documents");
 export function MyOrders() {
   useDocumentTitle(A.MY_ORDERS);
   const { user } = useAuth();
-  const load = () => Promise.all([getMyOrders(user.email), getMyReturns(user.email)]).then(([orders, returns]) => ({ orders, returns }));
+  // A failed reviews call must not hide the orders page — the rate buttons just don't show.
+  const load = () => Promise.all([getMyOrders(user.email), getMyReturns(user.email), getMyReviews().catch(() => [])])
+    .then(([orders, returns, reviews]) => ({ orders, returns, reviews: Object.fromEntries(reviews.map((r) => [r.productId, r])) }));
   const { data, loading, reload } = useAsync(load, [user.email]);
   const [tab, setTab] = useState("orders");
   const [cancelling, setCancelling] = useState(null);
   const [returning, setReturning] = useState(null);
+  const [rating, setRating] = useState(null); // { item, product, review }
   const [now] = useState(() => Date.now()); // fixed per visit, keeps render pure
   if (loading) return <PageLoader />;
-  const { orders, returns } = data;
+  const { orders, returns, reviews } = data;
 
   const run = async (fn, msg) => {
     try { await fn(); successToast(msg); reload(); } catch (err) { errorToast(getErrorMessage(err)); }
@@ -66,7 +69,9 @@ export function MyOrders() {
                     now={now}
                     onCancel={() => setCancelling(sub)}
                     onInvoice={() => invoice(order, sub)}
+                    onRate={(item, product) => setRating({ item, product, review: reviews[item.productId] })}
                     onReturn={(item) => setReturning({ item, order, sub })}
+                    reviews={reviews}
                     returnWindowDays={PLATFORM.defaultReturnWindowDays}
                     address={order.address}
                     sub={sub}
@@ -112,12 +117,20 @@ export function MyOrders() {
         open={Boolean(cancelling)}
         title={A.CANCEL_SHIPMENT}
       />
+      {rating && (
+        <ReviewModal
+          onClose={() => setRating(null)}
+          onSaved={() => { setRating(null); reload(); }}
+          product={{ image: rating.item.image, name: rating.item.name, slug: rating.product.slug }}
+          review={rating.review}
+        />
+      )}
       {returning && <ReturnModal context={returning} onClose={() => setReturning(null)} onDone={() => { setReturning(null); setTab("returns"); reload(); }} />}
     </Container>
   );
 }
 
-function SubOrder({ address, now, onCancel, onInvoice, onReturn, returnWindowDays, sub }) {
+function SubOrder({ address, now, onCancel, onInvoice, onRate, onReturn, returnWindowDays, reviews, sub }) {
   const [open, setOpen] = useState(false);
   const canCancel = ["confirmed", "processing"].includes(sub.status);
   const windowOpen = sub.status === "delivered" && now - new Date(sub.deliveredAt).getTime() < returnWindowDays * DAY;
@@ -129,13 +142,16 @@ function SubOrder({ address, now, onCancel, onInvoice, onReturn, returnWindowDay
       </div>
       {sub.trackingNumber && <p className="mb-3 text-xs text-muted">{sub.carrier} · {sub.trackingNumber}{sub.deliveredAt ? ` · ${A.DELIVERED_ON(formatDate(sub.deliveredAt))}` : ""}</p>}
       <ul className="space-y-3">
-        {sub.items.map((it) => (
+        {sub.items.map((it, i) => (
           <li className="flex flex-wrap items-center gap-3 text-sm" key={it.variantId}>
             <SmartImage alt="" className="size-14 rounded-lg bg-slate-50 object-contain p-1" src={it.image} />
             <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{it.name}</span><span className="text-xs text-muted">{it.variantLabel && `${it.variantLabel} · `}× {it.quantity}{it.returnedQuantity ? ` · ${A.RETURNED(it.returnedQuantity)}` : ""}</span></span>
             <span className="tabular">{formatCurrency(it.price * it.quantity)}</span>
             {windowOpen && it.isReturnable !== false && it.returnedQuantity < it.quantity && (
               <Button onClick={() => onReturn(it)} size="sm" variant="ghost"><RotateCcw className="size-4" />{A.REQUEST_RETURN}</Button>
+            )}
+            {sub.status === "delivered" && sub.items.findIndex((x) => x.productId === it.productId) === i && (
+              <RateItem item={it} onRate={onRate} review={reviews[it.productId]} />
             )}
           </li>
         ))}
@@ -186,5 +202,18 @@ function ReturnModal({ context: { item, order, sub }, onClose, onDone }) {
         <Button loading={saving} onClick={submit}>{A.SUBMIT_RETURN}</Button>
       </div>
     </Modal>
+  );
+}
+
+/** Delivered item: "Rate product", or the buyer's stars with an edit button once rated. */
+function RateItem({ item, onRate, review }) {
+  const product = getProductById(item.productId);
+  if (!product) return null; // product no longer listed
+  if (!review) return <Button onClick={() => onRate(item, product)} size="sm" variant="outline"><Star className="size-4" />{EN.REVIEW.RATE_PRODUCT}</Button>;
+  return (
+    <Button aria-label={EN.REVIEW.EDIT_MINE} onClick={() => onRate(item, product)} size="sm" variant="ghost">
+      <span className="inline-flex items-center gap-0.5 font-semibold text-amber-600">{review.rating}<Star aria-hidden className="size-3.5 fill-amber-400 text-amber-400" /></span>
+      <PenLine className="size-4" />{EN.REVIEW.EDIT}
+    </Button>
   );
 }

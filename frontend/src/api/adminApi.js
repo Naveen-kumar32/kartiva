@@ -7,6 +7,7 @@ import { DAY_MS } from "@/utils/orderMath";
 
 import { notify } from "./marketOps";
 import { refreshCatalog } from "./bootstrap";
+import { customerReviewRows } from "./reviewApi";
 import { apiError, audit, commit, getDb, nextId, nowIso, resetDemoData as resetMockData } from "./mockDb";
 import { findSubOrder, generateSettlementInDb, ledgerFor, markRefundPaidInDb, markSettlementPaidInDb, transitionSubOrder, updateReturnInDb } from "./orderOps";
 
@@ -507,7 +508,7 @@ export async function getAdminReviews() {
   if (!IS_MOCK) return get(API.ADMIN_REVIEWS);
   return run(() => {
     const db = getDb();
-    return db.products.filter((p) => !p.deletedAt).slice(0, 30).flatMap((p) => buildReviews(p, 3).map((r) => ({ ...r, hidden: db.hiddenReviews.includes(r.id), productName: p.name, productSlug: p.slug, storeSlug: p.storeSlug })));
+    return [...customerReviewRows(), ...db.products.filter((p) => !p.deletedAt).slice(0, 30).flatMap((p) => buildReviews(p, 3).map((r) => ({ ...r, hidden: db.hiddenReviews.includes(r.id), productName: p.name, productSlug: p.slug, storeSlug: p.storeSlug })))];
   });
 }
 

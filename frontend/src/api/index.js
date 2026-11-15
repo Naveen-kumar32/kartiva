@@ -10,5 +10,6 @@ export * from "./mailApi";
 export * from "./messageApi";
 export * from "./notificationApi";
 export * from "./orderApi";
+export * from "./reviewApi";
 export * from "./sellerApi";
 export * from "./sellerGrowthApi";

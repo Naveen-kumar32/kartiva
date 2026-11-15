@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, Review, Store
+from apps.catalog.reviews import customer_reviews
 from apps.catalog.services import build_reviews
 from apps.core.models import AuditLog
 from apps.core.services import get_platform
@@ -158,10 +159,10 @@ def settlements_overview():
 
 # ---------- Reviews ----------
 def admin_reviews():
-    out = []
+    out = customer_reviews()
     for p in Product.objects.filter(deleted_at__isnull=True).order_by("id")[:30]:
         p = p.data
-        rows = list(Review.objects.filter(product_id=p.get("id")).order_by("id")[:3])
+        rows = list(Review.objects.filter(product_id=p.get("id"), data__userEmail__isnull=True).order_by("id")[:3])
         reviews = ([{**{k: v for k, v in r.data.items() if k not in ("productId", "reviewKey")}, "id": r.data.get("reviewKey") or r.data.get("id"), "hidden": bool(r.data.get("hidden"))} for r in rows]
                    if rows else [{**r, "hidden": False} for r in build_reviews(p, 3)])
         out += [{**r, "productName": p.get("name"), "productSlug": p.get("slug"), "storeSlug": p.get("storeSlug")} for r in reviews]

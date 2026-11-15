@@ -4,8 +4,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.core.errors import ApiError
+from apps.core.permissions import require_user
 
-from . import services
+from . import reviews, services
+from .models import Product
 
 
 def _list(qp, key):
@@ -67,3 +69,22 @@ def store_detail(request, slug):
     if data is None:
         raise ApiError("Store not found.", 404)
     return Response(data)
+
+
+@api_view(["GET", "POST"])
+def my_review(request, slug):
+    """GET /products/<slug>/my-review/ → {canReview, review}. POST {rating 1-5, title, body} → create / edit my review.
+    Only a buyer with a DELIVERED order for this product can rate it; identity always comes from the JWT."""
+    user = require_user(request)
+    if request.method == "POST":
+        return Response(reviews.save_review(user, slug, request.data), status=201)
+    product = Product.objects.filter(slug=slug, deleted_at__isnull=True).first()
+    if not product:
+        raise ApiError("Product not found.", 404)
+    return Response(reviews.my_review(user, product))
+
+
+@api_view(["GET"])
+def my_reviews(request):
+    """GET /reviews/mine/ → {results: [the buyer's reviews with productId]} (for My Orders)."""
+    return Response({"results": reviews.my_reviews(require_user(request))})

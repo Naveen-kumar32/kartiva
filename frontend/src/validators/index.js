@@ -18,6 +18,7 @@ export * from "./createQuoteSchema";
 export * from "./createRegisterSchema";
 export * from "./createReportSchema";
 export * from "./createResetPasswordSchema";
+export * from "./createReviewSchema";
 export * from "./createRfqSchema";
 export * from "./createStaffInviteSchema";
 export * from "./createSupportTicketSchema";

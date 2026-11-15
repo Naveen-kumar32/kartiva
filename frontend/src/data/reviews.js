@@ -12,8 +12,9 @@ const TEXTS = [
 ];
 
 export function buildReviews(product, count = 6) {
-  // Never more sample reviews than the product's rating count (new products have none).
-  return Array.from({ length: Math.min(count, product.reviewCount || 0) }, (_, i) => {
+  // Never more sample reviews than the product's seeded rating count (new products have none; customers' own reviews are extra).
+  const seeded = (product.reviewCount || 0) - (product.customerReviewCount || 0);
+  return Array.from({ length: Math.max(0, Math.min(count, seeded)) }, (_, i) => {
     const seed = (product.id * 7 + i * 13) % 97;
     const [rating, title, body] = TEXTS[seed % TEXTS.length];
     const day = 1 + ((product.id + i * 5) % 28);
@@ -30,3 +31,19 @@ export function buildReviews(product, count = 6) {
     };
   });
 }
+
+/** Star breakdown {5: n, …, 1: n} for a product that only has a seeded average (same as backend reviews.estimate_counts). */
+export function estimateCounts(rating, count) {
+  const out = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  if (!count) return out;
+  const stars = [5, 4, 3, 2, 1];
+  const weights = Object.fromEntries(stars.map((s) => [s, Math.max(0.02, 1 - Math.abs(s - (rating || 0)) / 2.5)]));
+  const total = stars.reduce((t, s) => t + weights[s], 0);
+  const raw = Object.fromEntries(stars.map((s) => [s, (weights[s] / total) * count]));
+  stars.forEach((s) => { out[s] = Math.floor(raw[s]); });
+  const left = count - stars.reduce((t, s) => t + out[s], 0);
+  [...stars].sort((a, b) => (raw[b] - out[b]) - (raw[a] - out[a]) || b - a).slice(0, left).forEach((s) => { out[s] += 1; }); // largest remainder
+  return out;
+}
+
+export const ratingCounts = (product) => product.ratingCounts ?? estimateCounts(product.rating, product.reviewCount);

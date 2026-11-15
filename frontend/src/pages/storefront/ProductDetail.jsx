@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getProduct } from "@/api";
 import {
   AdSlot, Badge, Breadcrumbs, BulkPricingTable, Button, Container, DeliveryCheck, EnquiryButton, ErrorState, PageLoader, PriceTag, ProductGallery, ProductRail,
-  QuantityStepper, Rating, ReviewList, SectionHeader, SupplierCard, TradeChips, VariantSelector, WishlistButton,
+  QuantityStepper, RateProduct, Rating, ReviewList, SectionHeader, SupplierCard, TradeChips, VariantSelector, WishlistButton,
 } from "@/components";
 import { AD_SLOT_KEYS } from "@/constants";
 import { useAsync, useDocumentTitle } from "@/hooks";
@@ -24,7 +24,7 @@ export function ProductDetail() {
   const { slug } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { data: product, error, loading, reload } = useAsync(() => getProduct(slug), [slug]);
+  const { data: product, error, loading, reload, setData } = useAsync(() => getProduct(slug), [slug]);
   // Selection is stored with the product id it belongs to, so navigating to another product
   // falls back to that product's default variant without a reset effect.
   const [selection, setSelection] = useState({ attrs: null, productId: null, quantity: null });
@@ -158,8 +158,11 @@ export function ProductDetail() {
       </div>
 
       <section className="mt-8 rounded-2xl bg-white p-5 shadow-card sm:p-6">
-        <h2 className="mb-5 text-lg font-bold">{EN.PRODUCT.REVIEWS}</h2>
-        <ReviewList rating={product.rating} reviewCount={product.reviewCount} reviews={product.reviews} />
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">{EN.PRODUCT.REVIEWS}</h2>
+          <RateProduct onSaved={() => getProduct(slug).then(setData)} product={product} />
+        </div>
+        <ReviewList rating={product.rating} ratingCounts={product.ratingCounts} reviewCount={product.reviewCount} reviews={product.reviews} />
       </section>
 
       {product.shopPicks && (

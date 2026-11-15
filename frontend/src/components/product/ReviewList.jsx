@@ -1,19 +1,17 @@
 import { BadgeCheck } from "lucide-react";
 
+import { estimateCounts } from "@/data";
 import { EN } from "@/locales";
 import { formatDate } from "@/utils/format";
 
 import { Rating, Stars } from "../ui";
 
-export function ReviewList({ rating, reviewCount, reviews }) {
+export function ReviewList({ rating, ratingCounts, reviewCount, reviews }) {
   if (!reviewCount && !reviews.length) return <p className="text-sm text-muted">{EN.PRODUCT.NO_RATINGS}</p>;
 
-  // Approximate distribution for the demo summary bars.
-  const dist = [5, 4, 3, 2, 1].map((star) => {
-    const weight = Math.max(0.02, 1 - Math.abs(star - rating) / 2.5);
-    return { star, weight };
-  });
-  const total = dist.reduce((s, d) => s + d.weight, 0);
+  // Star breakdown from the server (real counts once customers rate; an estimate for seeded demo ratings).
+  const counts = ratingCounts ?? estimateCounts(rating, reviewCount);
+  const total = Math.max(1, [1, 2, 3, 4, 5].reduce((t, s) => t + (counts[s] || 0), 0));
 
   return (
     <div className="grid gap-8 md:grid-cols-[260px_1fr]">
@@ -26,13 +24,13 @@ export function ReviewList({ rating, reviewCount, reviews }) {
           </div>
         </div>
         <div className="mt-4 space-y-1.5">
-          {dist.map(({ star, weight }) => (
+          {[5, 4, 3, 2, 1].map((star) => (
             <div className="flex items-center gap-2 text-xs" key={star}>
               <span className="w-6 tabular">{star}★</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(weight / total) * 100}%` }} />
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${((counts[star] || 0) / total) * 100}%` }} />
               </div>
-              <span className="w-10 text-right text-muted tabular">{Math.round((weight / total) * reviewCount).toLocaleString("en-IN")}</span>
+              <span className="w-10 text-right text-muted tabular">{(counts[star] || 0).toLocaleString("en-IN")}</span>
             </div>
           ))}
         </div>

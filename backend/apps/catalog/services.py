@@ -2,7 +2,8 @@
 from apps.core.services import get_platform
 from apps.market.models import KycDocument
 
-from .models import Category, Product, Review, Store
+from .models import Category, Product, Store
+from .reviews import rating_counts, stored_reviews
 from .smart_search import Searcher
 
 PAGE_SIZE = 24
@@ -116,7 +117,8 @@ def build_reviews(product, count=6):
     """Deterministic sample reviews (same as src/data/reviews.js) for products that have no stored reviews."""
     out = []
     pid = product.get("id") or 0
-    for i in range(min(count, product.get("reviewCount") or 0)):  # never more sample reviews than the product's rating count
+    seeded = (product.get("reviewCount") or 0) - (product.get("customerReviewCount") or 0)
+    for i in range(min(count, max(0, seeded))):  # never more sample reviews than the product's seeded rating count
         seed = (pid * 7 + i * 13) % 97
         rating, title, body = TEXTS[seed % len(TEXTS)]
         day = 1 + ((pid + i * 5) % 28)
@@ -125,17 +127,9 @@ def build_reviews(product, count=6):
     return out
 
 
-def _public_review(r):
-    out = {k: v for k, v in r.items() if k not in ("hidden", "productId", "reviewKey")}
-    out["id"] = r.get("reviewKey") or r.get("id")
-    return out
-
-
 def reviews_for(product, count=6):
-    rows = list(Review.objects.filter(product_id=product.get("id")).order_by("id"))
-    if not rows:
-        return build_reviews(product, count)
-    return [_public_review(r.data) for r in rows[:count] if not r.data.get("hidden")]
+    """Visible reviews: customers' own reviews first (newest first), then the sample reviews."""
+    return stored_reviews(product, build_reviews, count)
 
 
 # ---------- Endpoints' logic ----------
@@ -332,7 +326,7 @@ def product_detail(slug):
     allp = [cat.with_summary(p) for p in cat.public_products()]
     related = [p for p in allp if p.get("categorySlug") == product.get("categorySlug") and p.get("id") != product.get("id")]
     related = sorted(related, key=lambda p: p.get("storeSlug") != HOUSE_STORE)[:12]  # the house print shop first
-    return {**cat.with_summary(product), "related": related, "reviews": reviews_for(product), "shopPicks": _shop_picks(cat, allp, product, related)}
+    return {**cat.with_summary(product), "ratingCounts": rating_counts(product), "related": related, "reviews": reviews_for(product), "shopPicks": _shop_picks(cat, allp, product, related)}
 
 
 def _shop_picks(cat, allp, product, related):

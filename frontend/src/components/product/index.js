@@ -6,6 +6,8 @@ export * from "./ProductCard";
 export * from "./ProductGallery";
 export * from "./ProductGrid";
 export * from "./ProductRail";
+export * from "./RateProduct";
+export * from "./ReviewModal";
 export * from "./ReviewList";
 export * from "./SortSelect";
 export * from "./StoreCard";

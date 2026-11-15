@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.catalog.models import Category, Product, Review, StockMovement
+from apps.catalog.reviews import customer_reviews
 from apps.catalog.services import build_reviews, summarize_product
 from apps.core.errors import ApiError
 from apps.core.services import atomic, audit, get_platform, next_id, now_iso
@@ -401,9 +402,9 @@ def seller_ads(request):
 @api_view(["GET"])
 def seller_reviews(request):
     _, store_row = seller(request)
-    out = []
+    out = customer_reviews(store_row.slug)
     for p in store_products(store_row.slug)[:12]:
-        rows = list(Review.objects.filter(product_id=p["id"]).order_by("id")[:3])
+        rows = list(Review.objects.filter(product_id=p["id"], data__userEmail__isnull=True).order_by("id")[:3])
         reviews = ([{**{k: v for k, v in r.data.items() if k not in ("productId", "reviewKey")}, "id": r.data.get("reviewKey") or r.data.get("id"),
                      "hidden": bool(r.data.get("hidden"))} for r in rows]
                    if rows else [{**r, "hidden": False} for r in build_reviews(p, 3)])

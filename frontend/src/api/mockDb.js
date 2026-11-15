@@ -19,6 +19,7 @@ function normalize() {
   state.smsOutbox ??= []; // SMS / WhatsApp messages (sent by the SMS gateway once the backend is live)
   state.security ??= { attempts: {}, resetTokens: [] }; // login lockout + password-reset tokens (hashed)
   state.seen ??= {};
+  state.customerReviews ??= []; // ratings & reviews written by buyers (verified purchases)
   // Wording update for data saved before "buy request" became "quote request" on the customer side.
   if (state.announcement?.text?.includes("post a buy request")) state.announcement.text = "New: request quotes for bulk or custom needs — verified suppliers reply within hours.";
   const how = state.cmsPages?.find((pg) => pg.slug === "buy-requests");

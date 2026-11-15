@@ -1,8 +1,9 @@
 import { API, axiosInstance, IS_MOCK } from "@/config";
 import { PAGE_SIZE } from "@/constants";
-import { CATEGORIES, PRODUCTS, STORES, buildReviews } from "@/data";
+import { CATEGORIES, PRODUCTS, STORES, buildReviews, ratingCounts } from "@/data";
 
 import { getDb } from "./mockDb";
+import { visibleReviews } from "./reviewApi";
 import { categoryTrail, categoryWithDescendants, getStore, isServiceable, mockDelay, priceTiersOf, summarizeProduct } from "@/utils";
 import { createSearcher } from "@/utils/smartSearch";
 
@@ -162,8 +163,7 @@ export async function getProduct(slug) {
   const all = publicProducts().map(withSummary);
   const related = all.filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
     .sort((a, b) => (a.storeSlug !== HOUSE_STORE) - (b.storeSlug !== HOUSE_STORE)).slice(0, 12); // the house print shop first
-  const hidden = getDb().hiddenReviews;
-  return mockDelay({ ...withSummary(product), related, reviews: buildReviews(product).filter((rv) => !hidden.includes(rv.id)), shopPicks: shopPicks(all, product, related) });
+  return mockDelay({ ...withSummary(product), ratingCounts: ratingCounts(product), related, reviews: visibleReviews(product), shopPicks: shopPicks(all, product, related) });
 }
 
 /** First suggestion row under every product: the house print shop's products (varied, not repeating what's on screen). */

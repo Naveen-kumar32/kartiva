@@ -7,6 +7,7 @@ import { mockDelay } from "@/utils/mock";
 import { DAY_MS } from "@/utils/orderMath";
 
 import { refreshCatalog } from "./bootstrap";
+import { customerReviewRows } from "./reviewApi";
 import { apiError, audit, commit, getDb, nextId, nowIso } from "./mockDb";
 import { assertStoreAccess } from "./session";
 import { findSubOrder, ledgerFor, moveStock, transitionSubOrder, updateReturnInDb } from "./orderOps";
@@ -298,7 +299,7 @@ export async function getSellerReviews(storeSlug) {
   if (!IS_MOCK) return (await remote("get", API.SELLER_REVIEWS)).results;
   return run(() => {
     const hidden = getDb().hiddenReviews;
-    return getDb().products.filter((p) => p.storeSlug === storeSlug && !p.deletedAt).slice(0, 12)
-      .flatMap((p) => buildReviews(p, 3).map((r) => ({ ...r, hidden: hidden.includes(r.id), productName: p.name, productSlug: p.slug })));
+    return [...customerReviewRows(storeSlug), ...getDb().products.filter((p) => p.storeSlug === storeSlug && !p.deletedAt).slice(0, 12)
+      .flatMap((p) => buildReviews(p, 3).map((r) => ({ ...r, hidden: hidden.includes(r.id), productName: p.name, productSlug: p.slug })))];
   });
 }
