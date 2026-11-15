@@ -1277,7 +1277,7 @@ export const EN = {
       REJECT_BODY: (doc, store) => `Reject the ${doc} uploaded by ${store}? They will be asked to upload it again.`,
       REJECT_TITLE: "Reject document",
       SEARCH: "Search store or GSTIN…",
-      SHOW_DOCS: (n) => `Show ${n} verified documents`,
+      SHOW_DOCS: (n, pending) => `Show ${n} documents${pending ? ` (${pending} waiting for review)` : ""}`,
       SHOW_LESS: "Show less",
       SIMULATED: "Simulated",
       SIZE_KB: (kb) => `${kb} KB`,
