@@ -15,7 +15,7 @@ const childrenOf = (id) => CATEGORIES.filter((c) => c.parentId === id && active(
 // Alibaba-style bar: "All categories" mega menu (every industry) + a few pinned categories (showInNav).
 export function CategoryBar() {
   const roots = CATEGORIES.filter((c) => !c.parentId && active(c)).sort(bySort);
-  const pinned = roots.filter((c) => c.showInNav).slice(0, 8);
+  const pinned = roots.filter((c) => c.showInNav).slice(0, 9);
   const [megaOpen, setMegaOpen] = useState(false);
   const [hoverId, setHoverId] = useState(null);
   const [openId, setOpenId] = useState(null);

@@ -381,7 +381,7 @@ export const CATEGORIES = [
   {
     "id": 43,
     "slug": "packaging-printing",
-    "name": "Packaging & Printing",
+    "name": "Packaging",
     "parentId": null,
     "sortOrder": 8,
     "showInNav": false
@@ -420,7 +420,8 @@ export const CATEGORIES = [
     "parentId": 43,
     "sortOrder": 3,
     "defaultHsn": "4819",
-    "defaultGstRate": 18
+    "defaultGstRate": 18,
+    "isActive": false
   },
   {
     "id": 48,
@@ -1552,6 +1553,114 @@ export const CATEGORIES = [
     "parentId": 172,
     "sortOrder": 3,
     "defaultHsn": "9985",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 177,
+    "slug": "printing-xerox",
+    "name": "Printing & Xerox",
+    "parentId": null,
+    "sortOrder": 7.5,
+    "showInNav": true,
+    "shortName": "Printing & Xerox"
+  },
+  {
+    "id": 178,
+    "slug": "xerox-prints",
+    "name": "Xerox, Printouts & Lamination",
+    "parentId": 177,
+    "sortOrder": 0,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 179,
+    "slug": "photos-id-cards",
+    "name": "Photos & ID Cards",
+    "parentId": 177,
+    "sortOrder": 1,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 180,
+    "slug": "flex-sign-boards",
+    "name": "Flex, Banners & Sign Boards",
+    "parentId": 177,
+    "sortOrder": 2,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 181,
+    "slug": "posters-stickers",
+    "name": "Posters, Stickers & Labels",
+    "parentId": 177,
+    "sortOrder": 3,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 182,
+    "slug": "cards-invitations",
+    "name": "Wedding Cards, Invitations & Stationery",
+    "parentId": 177,
+    "sortOrder": 4,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 183,
+    "slug": "offset-bulk-printing",
+    "name": "Offset & Bulk Printing",
+    "parentId": 177,
+    "sortOrder": 5,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 184,
+    "slug": "custom-merchandise",
+    "name": "Custom Printed Merchandise",
+    "parentId": 177,
+    "sortOrder": 6,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 185,
+    "slug": "visiting-cards",
+    "name": "Visiting Cards & Business Stationery",
+    "parentId": 177,
+    "sortOrder": 7,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 186,
+    "slug": "binding-document-services",
+    "name": "Binding, Scanning & Document Services",
+    "parentId": 177,
+    "sortOrder": 8,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 187,
+    "slug": "rubber-stamps",
+    "name": "Rubber Stamps & Seals",
+    "parentId": 177,
+    "sortOrder": 9,
+    "defaultHsn": "4911",
+    "defaultGstRate": 18
+  },
+  {
+    "id": 188,
+    "slug": "calendars-diaries",
+    "name": "Calendars, Diaries & Notebooks",
+    "parentId": 177,
+    "sortOrder": 10,
+    "defaultHsn": "4911",
     "defaultGstRate": 18
   }
 ];

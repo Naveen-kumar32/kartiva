@@ -45,7 +45,7 @@ CATEGORY_TREE = [
     ("automotive", "Vehicles & Transportation", "Vehicles", True, ("8711", 18), [
         ("two-wheelers", "Two-Wheelers", "motorcycle"), ("electric-vehicles", "Electric Scooters & EVs", None), ("commercial-vehicles", "Commercial Vehicles", None),
     ]),
-    ("packaging-printing", "Packaging & Printing", None, False, ("4819", 18), [
+    ("packaging-printing", "Packaging", None, False, ("4819", 18), [
         ("corrugated-boxes", "Corrugated Boxes & Cartons", None), ("paper-bags", "Paper & Plastic Bags", None),
         ("labels-stickers", "Labels & Stickers", None), ("printing-services", "Printing Services", None),
     ]),
@@ -149,7 +149,18 @@ CATEGORY_TREE = [
         ("logistics-services", "Logistics & Transport", None), ("installation-repair", "Installation & Repair", None),
         ("business-services", "Business & Consulting", None), ("event-services", "Event & Wedding Services", None),
     ]),
+    # Added last so every earlier category keeps its id. Shown in the top menu right after Vehicles (SORT_OVERRIDE).
+    ("printing-xerox", "Printing & Xerox", "Printing & Xerox", True, ("4911", 18), [
+        ("xerox-prints", "Xerox, Printouts & Lamination", None), ("photos-id-cards", "Photos & ID Cards", None),
+        ("flex-sign-boards", "Flex, Banners & Sign Boards", None), ("posters-stickers", "Posters, Stickers & Labels", None),
+        ("cards-invitations", "Wedding Cards, Invitations & Stationery", None), ("offset-bulk-printing", "Offset & Bulk Printing", None),
+        ("custom-merchandise", "Custom Printed Merchandise", None), ("visiting-cards", "Visiting Cards & Business Stationery", None),
+        ("binding-document-services", "Binding, Scanning & Document Services", None), ("rubber-stamps", "Rubber Stamps & Seals", None),
+        ("calendars-diaries", "Calendars, Diaries & Notebooks", None),
+    ]),
 ]
+SORT_OVERRIDE = {"printing-xerox": 7.5}  # between Vehicles (7) and Packaging (8)
+INACTIVE = {"printing-services"}  # replaced by the Printing & Xerox category (kept so ids stay stable)
 
 # Move some sample products into a more specific leaf (by title), and ChefPro's range into Commercial Kitchen.
 LEAF_BY_TITLE = {
@@ -201,7 +212,7 @@ leaf_names = {}
 cid = 1
 for order, (root_slug, root_name, short, in_nav, root_tax, leaves) in enumerate(CATEGORY_TREE):
     root_id = cid
-    root = {"id": cid, "slug": root_slug, "name": root_name, "parentId": None, "sortOrder": order, "showInNav": in_nav}
+    root = {"id": cid, "slug": root_slug, "name": root_name, "parentId": None, "sortOrder": SORT_OVERRIDE.get(root_slug, order), "showInNav": in_nav}
     if short:
         root["shortName"] = short
     categories.append(root)
@@ -210,7 +221,7 @@ for order, (root_slug, root_name, short, in_nav, root_tax, leaves) in enumerate(
         hsn, rate = TAX.get(slug, root_tax)
         TAX[slug] = (hsn, rate)
         categories.append({"id": cid, "slug": slug, "name": name, "parentId": root_id, "sortOrder": i,
-                           "defaultHsn": hsn, "defaultGstRate": rate})
+                           "defaultHsn": hsn, "defaultGstRate": rate, **({"isActive": False} if slug in INACTIVE else {})})
         leaf_names[slug] = name
         if src_cat:
             src_to_leaf[src_cat] = slug
