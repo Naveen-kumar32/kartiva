@@ -74,6 +74,9 @@ function SettingsForm({ initial }) {
         <p className="mb-3 text-sm text-muted">{T.SEARCH_WORDS_HINT}</p>
         <FormTextarea label={T.SEARCH_WORDS_LABEL} name="searchWords" onChange={set("searchWords")} placeholder={T.SEARCH_WORDS_PLACEHOLDER} rows={6} value={form.searchWords ?? ""} />
       </Panel>
+      <Panel title={T.REVIEWS_SETTINGS}>
+        <SwitchRow checked={form.reviewsBuyersOnly} description={T.REVIEWS_BUYERS_ONLY_HINT} label={T.REVIEWS_BUYERS_ONLY} onChange={(v) => setForm((f) => ({ ...f, reviewsBuyersOnly: v }))} />
+      </Panel>
       <Panel title={A.SETTINGS_COD}>
         <SwitchRow checked={form.codEnabled} description={T.COD_HINT} label={A.ENABLE_COD} onChange={(v) => setForm((f) => ({ ...f, codEnabled: v }))} />
         <div className="mt-4 grid gap-4 sm:grid-cols-3">

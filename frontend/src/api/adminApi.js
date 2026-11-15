@@ -541,7 +541,7 @@ export async function savePlatformSettings(patch) {
   return run(() => {
     const p = getDb().platform;
     // Whitelist: only known settings keys can be written; internal keys (idempotency, homeSections …) are not editable here.
-    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "searchWords", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website", "youtubeUrl"]);
+    const EDITABLE = new Set(["address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices", "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "reviewsBuyersOnly", "searchWords", "supportEmail", "supportPhone", "tcsRate", "tdsRate", "website", "youtubeUrl"]);
     const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => EDITABLE.has(k)));
     if (clean.youtubeUrl && !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(clean.youtubeUrl)) throw apiError("YouTube link must start with https://www.youtube.com/ or https://youtu.be/");
     if (clean.mapLocation != null) clean.mapLocation = String(clean.mapLocation).trim().slice(0, 200);

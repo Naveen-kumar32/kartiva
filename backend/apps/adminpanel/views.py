@@ -607,7 +607,7 @@ def audit_log(request):
 
 
 EDITABLE = {"address", "cin", "codEnabled", "codFee", "codMaxOrderValue", "commissionGstRate", "defaultCommissionRate", "defaultReturnWindowDays", "gstin", "gstRateChoices",
-            "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "searchWords", "supportEmail", "supportPhone", "tcsRate", "tdsRate",
+            "legalName", "lowStockThreshold", "mapLocation", "orderPaymentTimeoutMinutes", "productModerationEnabled", "reviewsBuyersOnly", "searchWords", "supportEmail", "supportPhone", "tcsRate", "tdsRate",
             "website", "youtubeUrl"}
 YOUTUBE_LINK = re.compile(r"^https://(www\.|m\.)?(youtube\.com|youtu\.be)/\S*$")
 
@@ -625,6 +625,8 @@ def settings_view(request):
             raise ApiError("YouTube link must start with https://www.youtube.com/ or https://youtu.be/")
         if "mapLocation" in clean:
             clean["mapLocation"] = str(clean["mapLocation"] or "").strip()[:200]
+        if "reviewsBuyersOnly" in clean:
+            clean["reviewsBuyersOnly"] = clean["reviewsBuyersOnly"] is True
         if "searchWords" in clean:
             clean["searchWords"] = str(clean["searchWords"] or "")[:20000]
         changed = [k for k in clean if json.dumps(p.get(k), sort_keys=True) != json.dumps(clean[k], sort_keys=True)]

@@ -48,7 +48,7 @@ export function AdminReviews() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2"><Rating value={r.rating} /><span className="font-semibold">{r.title}</span>{r.hidden && <Badge tone="danger">{T.HIDDEN}</Badge>}</div>
                 <p className="mt-1 text-sm">{r.body}</p>
-                <p className="mt-1 text-xs text-muted">{r.author}, {r.city} · {formatDate(r.createdAt)} · <Link className="font-medium text-brand-700 hover:underline" to={ROUTES.PRODUCT(r.productSlug)}>{r.productName}</Link></p>
+                <p className="mt-1 text-xs text-muted">{r.city ? `${r.author}, ${r.city}` : r.author} · {formatDate(r.createdAt)} · <Link className="font-medium text-brand-700 hover:underline" to={ROUTES.PRODUCT(r.productSlug)}>{r.productName}</Link></p>
               </div>
               <Button onClick={() => toggle(r)} size="sm" variant={r.hidden ? "subtle" : "outline"}>
                 {r.hidden ? <><Eye className="size-4" />{T.RESTORE}</> : <><EyeOff className="size-4" />{T.HIDE}</>}

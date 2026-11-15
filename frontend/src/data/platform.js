@@ -15,6 +15,7 @@ export const PLATFORM = {
   mapLocation: "OMR, Chennai, Tamil Nadu 600096", // SAMPLE — place name or address shown on the footer map
   orderPaymentTimeoutMinutes: 15,
   productModerationEnabled: true,
+  reviewsBuyersOnly: false, // false = any signed-in customer can rate (like Amazon); true = only buyers with a delivered order
   supportEmail: "support@kartiva.in",
   supportPhone: "+91 44 4000 1234",
   tcsRate: 0.5,

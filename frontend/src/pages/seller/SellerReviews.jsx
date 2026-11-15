@@ -62,7 +62,7 @@ export function SellerReviews() {
                   <p className="mt-2 text-sm">{r.body}</p>
                   <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                     <Link className="font-medium text-brand-700 hover:underline" to={ROUTES.PRODUCT(r.productSlug)}>{r.productName}</Link>
-                    <span>{r.author}, {r.city}</span>
+                    <span>{r.city ? `${r.author}, ${r.city}` : r.author}</span>
                     <span>{formatDate(r.createdAt)}</span>
                     {r.verified && <span className="inline-flex items-center gap-1 text-emerald-700"><BadgeCheck aria-hidden className="size-3.5" />{EN.PRODUCT.VERIFIED_PURCHASE}</span>}
                   </p>

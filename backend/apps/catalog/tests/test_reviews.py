@@ -24,16 +24,33 @@ def test_estimate_counts_sum_to_the_rating_count():
         assert sum(estimate_counts(rating, n).values()) == n
 
 
-def test_only_a_delivered_buyer_can_rate(demo, anon, as_user):
+def test_any_buyer_can_rate_only_delivered_ones_are_verified(demo, anon, as_user):
     assert anon.post(url(DELIVERED), {"rating": 5}, format="json").status_code == 401
     assert as_user("gadgets@kartiva.demo").post(url(DELIVERED), {"rating": 5}, format="json").status_code == 403  # sellers can't rate
     buyer = as_user("buyer@kartiva.demo")
     assert buyer.get(url(DELIVERED)).json() == {"canReview": True, "review": None}
-    assert buyer.get(url(NOT_DELIVERED)).json()["canReview"] is False
-    assert buyer.post(url(NOT_DELIVERED), {"rating": 5}, format="json").status_code == 403
-    assert as_user("rahul@kartiva.demo").post(url(DELIVERED), {"rating": 5}, format="json").status_code == 403  # never bought it
+    assert buyer.get(url(NOT_DELIVERED)).json()["canReview"] is True  # like Amazon: no purchase needed
     assert buyer.post(url(DELIVERED), {"rating": 7}, format="json").status_code == 400
     assert buyer.post(url(DELIVERED), {"rating": "x"}, format="json").status_code == 400
+
+    stranger = as_user("rahul@kartiva.demo")  # never bought it
+    res = stranger.post(url(DELIVERED), {"rating": 3, "title": "Saw it in a shop"}, format="json")
+    assert res.status_code == 201 and res.json()["verified"] is False
+    assert buyer.post(url(DELIVERED), {"rating": 5}, format="json").json()["verified"] is True
+    shown = {r["title"]: r["verified"] for r in anon.get(f"/api/v1/products/{slug(DELIVERED)}/").json()["reviews"][:2]}
+    assert shown.get("Saw it in a shop") is False
+
+
+def test_buyers_only_setting(demo, as_user):
+    admin = as_user("admin@kartiva.demo")
+    assert admin.patch("/api/v1/admin-api/settings/", {"reviewsBuyersOnly": True}, format="json").status_code == 200
+    buyer = as_user("buyer@kartiva.demo")
+    assert buyer.get(url(NOT_DELIVERED)).json()["canReview"] is False
+    assert buyer.post(url(NOT_DELIVERED), {"rating": 5}, format="json").status_code == 403
+    assert as_user("rahul@kartiva.demo").post(url(DELIVERED), {"rating": 5}, format="json").status_code == 403
+    assert buyer.post(url(DELIVERED), {"rating": 5}, format="json").status_code == 201  # delivered buyers still can
+    admin.patch("/api/v1/admin-api/settings/", {"reviewsBuyersOnly": False}, format="json")
+    assert buyer.get(url(NOT_DELIVERED)).json()["canReview"] is True
 
 
 def test_review_updates_product_and_edit_replaces_it(demo, anon, as_user):

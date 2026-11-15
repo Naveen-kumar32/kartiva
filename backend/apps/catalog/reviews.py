@@ -1,12 +1,14 @@
 """Customer ratings & reviews (port of the review part of frontend src/api/catalogApi.js).
 
 Rules (enforced here, never trusted from the browser):
-- Only a signed-in BUYER whose order for the product has been DELIVERED can rate it (verified purchase).
+- Any signed-in BUYER can rate (like Amazon). Reviews backed by a DELIVERED order get "Verified purchase".
+  Admin → Settings → "Only buyers who received the product can rate" (platform.reviewsBuyersOnly) restricts it.
+- Sellers and admins never rate.
 - One review per buyer per product; posting again edits it.
 - The buyer's email and order number are stored for checks but never shown publicly.
 """
 from apps.core.errors import ApiError
-from apps.core.services import atomic, now_iso
+from apps.core.services import atomic, get_platform, now_iso
 from apps.orders.models import Order
 
 from .models import Product, Review
@@ -63,14 +65,18 @@ def _delivered_order(email, product_id):
     return None
 
 
+def buyers_only():
+    return get_platform().get("reviewsBuyersOnly") is True
+
+
 def _own_review(email, product_id):
     return Review.objects.filter(product_id=product_id, data__userEmail=email).first()
 
 
 def my_review(user, product):
-    """GET → {canReview, review}. canReview is False when there is no delivered order for this product."""
+    """GET → {canReview, review}. canReview is False for sellers/admins, and (buyers-only mode) without a delivered order."""
     row = _own_review(user.email, product.pk)
-    can = user.role == "buyer" and (row is not None or _delivered_order(user.email, product.pk) is not None)
+    can = user.role == "buyer" and (not buyers_only() or row is not None or _delivered_order(user.email, product.pk) is not None)
     mine = row and {**public_review(row.data), "hidden": bool(row.data.get("hidden"))}
     return {"canReview": can, "review": mine or None}
 
@@ -106,7 +112,7 @@ def save_review(user, slug, body):
         p = product.data
         row = _own_review(user.email, product.pk)
         order = _delivered_order(user.email, product.pk)
-        if not row and not order:
+        if not row and not order and buyers_only():
             raise ApiError("You can rate this product once your order has been delivered.", 403)
 
         counts = rating_counts(p)
@@ -118,14 +124,18 @@ def save_review(user, slug, body):
             counts[str(old)] = max(0, counts.get(str(old), 0) - 1)
             counts[str(rating)] = counts.get(str(rating), 0) + 1
             avg = (avg * n - old + rating) / n if n else rating
-            row.update(rating=rating, title=title, body=text, updatedAt=now)
+            row.update(rating=rating, title=title, body=text, updatedAt=now, verified=bool(order),
+                       orderNumber=order.get("number") if order else row.data.get("orderNumber"))
         else:
             profile = user.data or {}
             first, last = (profile.get("firstName") or "").strip(), (profile.get("lastName") or "").strip()
             author = f"{first} {last[:1]}.".strip() if first and last else (first or "Kartiva customer")
-            row = Review.create({"author": author, "body": text, "city": (order.get("address") or {}).get("city", ""), "createdAt": now,
-                                 "helpful": 0, "hidden": False, "orderNumber": order.get("number"), "productId": product.pk, "rating": rating,
-                                 "source": "customer", "title": title, "updatedAt": now, "userEmail": user.email, "verified": True})
+            addresses = profile.get("addresses") or []
+            home = next((a for a in addresses if a.get("isDefault")), addresses[0] if addresses else {})
+            city = ((order or {}).get("address") or {}).get("city") or home.get("city", "")
+            row = Review.create({"author": author, "body": text, "city": city, "createdAt": now, "helpful": 0, "hidden": False,
+                                 "orderNumber": order.get("number") if order else None, "productId": product.pk, "rating": rating,
+                                 "source": "customer", "title": title, "updatedAt": now, "userEmail": user.email, "verified": bool(order)})
             row.update(reviewKey=f"c{row.pk}")
             counts[str(rating)] = counts.get(str(rating), 0) + 1
             avg = (avg * n + rating) / (n + 1)

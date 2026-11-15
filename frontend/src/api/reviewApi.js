@@ -1,8 +1,9 @@
 // Customer ratings & reviews (port of backend apps/catalog/reviews.py).
-// Rules enforced here too, never trusted from the page: only a signed-in BUYER whose order for the product was
-// DELIVERED can rate it, one review per buyer per product (posting again edits it). Email / order number stay private.
+// Rules enforced here too, never trusted from the page: any signed-in BUYER can rate (like Amazon); a DELIVERED order
+// makes it a "Verified purchase". Admin setting reviewsBuyersOnly limits rating to delivered buyers. One review per
+// buyer per product (posting again edits it). Email / order number stay private.
 import { API, axiosInstance, IS_MOCK } from "@/config";
-import { PRODUCTS, buildReviews, ratingCounts } from "@/data";
+import { PLATFORM, PRODUCTS, buildReviews, ratingCounts } from "@/data";
 import { mockDelay } from "@/utils/mock";
 
 import { apiError, commit, getDb, nextId, nowIso } from "./mockDb";
@@ -31,6 +32,7 @@ export function customerReviewRows(storeSlug) {
     .map(({ r, p }) => ({ ...publicReview(r), hidden: db.hiddenReviews.includes(r.id), productName: p.name, productSlug: p.slug, storeSlug: p.storeSlug }));
 }
 
+const buyersOnly = () => PLATFORM.reviewsBuyersOnly === true;
 const deliveredOrder = (email, productId) =>
   getDb().orders.find((o) => o.buyer.email === email && o.subOrders.some((s) => s.status === "delivered" && s.items.some((it) => it.productId === productId)));
 
@@ -42,7 +44,7 @@ export async function getMyReview(slug) {
     const product = PRODUCTS.find((p) => p.slug === slug && !p.deletedAt);
     if (!product) throw apiError("Product not found.", 404);
     const mine = getDb().customerReviews.find((r) => r.productId === product.id && r.userEmail === user.email);
-    return { canReview: user.role === "buyer" && Boolean(mine || deliveredOrder(user.email, product.id)), review: mine ? publicReview(mine) : null };
+    return { canReview: user.role === "buyer" && (!buyersOnly() || Boolean(mine || deliveredOrder(user.email, product.id))), review: mine ? publicReview(mine) : null };
   }, 150);
 }
 
@@ -71,7 +73,7 @@ export async function saveMyReview(slug, { body = "", rating, title = "" }) {
     const db = getDb();
     let mine = db.customerReviews.find((r) => r.productId === product.id && r.userEmail === user.email);
     const order = deliveredOrder(user.email, product.id);
-    if (!mine && !order) throw apiError("You can rate this product once your order has been delivered.", 403);
+    if (!mine && !order && buyersOnly()) throw apiError("You can rate this product once your order has been delivered.", 403);
 
     const counts = { ...ratingCounts(product) };
     const n = product.reviewCount || 0;
@@ -81,15 +83,16 @@ export async function saveMyReview(slug, { body = "", rating, title = "" }) {
       counts[mine.rating] = Math.max(0, (counts[mine.rating] || 0) - 1);
       counts[stars] = (counts[stars] || 0) + 1;
       avg = n ? (avg * n - mine.rating + stars) / n : stars;
-      Object.assign(mine, { body: text, rating: stars, title: cleanTitle, updatedAt: now });
+      Object.assign(mine, { body: text, orderNumber: order?.number ?? mine.orderNumber, rating: stars, title: cleanTitle, updatedAt: now, verified: Boolean(order) });
     } else {
       const record = db.users.find((u) => u.email === user.email) ?? user;
       const first = (record.firstName ?? "").trim();
       const last = (record.lastName ?? "").trim();
+      const home = record.addresses?.find((a) => a.isDefault) ?? record.addresses?.[0];
       const num = nextId(db.customerReviews.map((r) => ({ id: Number(r.id.slice(1)) })));
       mine = {
-        author: first && last ? `${first} ${last[0]}.` : first || "Kartiva customer", body: text, city: order.address?.city ?? "", createdAt: now, helpful: 0,
-        id: `c${num}`, orderNumber: order.number, productId: product.id, rating: stars, title: cleanTitle, updatedAt: now, userEmail: user.email, verified: true,
+        author: first && last ? `${first} ${last[0]}.` : first || "Kartiva customer", body: text, city: order?.address?.city || home?.city || "", createdAt: now, helpful: 0,
+        id: `c${num}`, orderNumber: order?.number ?? null, productId: product.id, rating: stars, title: cleanTitle, updatedAt: now, userEmail: user.email, verified: Boolean(order),
       };
       db.customerReviews.push(mine);
       counts[stars] = (counts[stars] || 0) + 1;

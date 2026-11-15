@@ -74,7 +74,7 @@ def store_detail(request, slug):
 @api_view(["GET", "POST"])
 def my_review(request, slug):
     """GET /products/<slug>/my-review/ → {canReview, review}. POST {rating 1-5, title, body} → create / edit my review.
-    Only a buyer with a DELIVERED order for this product can rate it; identity always comes from the JWT."""
+    Any signed-in buyer can rate; a DELIVERED order makes it a verified purchase. Identity always comes from the JWT."""
     user = require_user(request)
     if request.method == "POST":
         return Response(reviews.save_review(user, slug, request.data), status=201)
