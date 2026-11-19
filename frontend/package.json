@@ -20,7 +20,7 @@
     "@reduxjs/toolkit": "^2.14.0",
     "axios": "^1.21.1",
     "formik": "^2.4.9",
-    "framer-motion": "^14.12.0",
+    "framer-motion": "^14.14.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "lucide-react": "^1.71.0",
